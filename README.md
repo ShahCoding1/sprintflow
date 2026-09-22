@@ -1,37 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 SprintFlow
 
-## Getting Started
+> **Modern Agile Project Management SaaS Platform**
 
-First, run the development server:
+**SprintFlow** is a modern, scalable, multi-tenant SaaS platform designed to help software development teams plan projects, manage sprints, organize tasks, collaborate efficiently, and understand project performance through meaningful analytics.
 
+🚧 **STATUS: UNDER ACTIVE DEVELOPMENT** 🚧
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+SprintFlow is currently being developed as a production-oriented software engineering project. The architecture, authentication system, database layer, organization/workspace system, UI, security model, and core SaaS foundations are being built incrementally.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The project is **not yet production-ready**. Features, APIs, interfaces, security policies, integrations, and database structures may change during development.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📌 Table of Contents
 
-## Learn More
+- [About SprintFlow](#-about-sprintflow)
+- [Project Status](#-project-status)
+- [Vision](#-vision)
+- [Core Goals](#-core-goals)
+- [Key Features](#-key-features)
+- [Architecture](#-architecture)
+- [Technology Stack](#-technology-stack)
+- [Project Structure](#-project-structure)
+- [Authentication](#-authentication)
+- [Multi-Tenancy](#-multi-tenancy)
+- [Authorization and Security](#-authorization-and-security)
+- [Database](#-database)
+- [Development Roadmap](#-development-roadmap)
+- [Current Development Progress](#-current-development-progress)
+- [Future Features](#-future-features)
+- [Getting Started](#-getting-started)
+- [Environment Variables](#-environment-variables)
+- [Development Workflow](#-development-workflow)
+- [Git Workflow](#-git-workflow)
+- [Quality Standards](#-quality-standards)
+- [Testing Strategy](#-testing-strategy)
+- [Deployment](#-deployment)
+- [Planned Integrations](#-planned-integrations)
+- [AI / Sprint Intelligence](#-ai--sprint-intelligence)
+- [Why SprintFlow](#-why-sprintflow)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Disclaimer](#-disclaimer)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 🧩 About SprintFlow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+SprintFlow is being built as a modern project management platform for software development teams.
 
-## Deploy on Vercel
+The main idea is to bring common Agile and software development workflows into one centralized workspace.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Instead of using multiple disconnected tools for:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Project planning
+- Task management
+- Sprint planning
+- Team management
+- Collaboration
+- Project analytics
+- Notifications
+- Activity tracking
+- Documentation
+- Development integrations
+
+SprintFlow aims to provide a unified platform.
+
+The platform is designed around the idea of:
+
+> **Plan → Build → Track → Analyze → Improve**
+
+SprintFlow will allow teams to create organizations, manage members, create projects, plan sprints, organize tasks, collaborate on work, and analyze development performance.
+
+---
+
+# 🚧 Project Status
+
+## Under Active Development
+
+SprintFlow is currently under active development.
+
+This repository represents an evolving software engineering project rather than a finished commercial product.
+
+### Current development areas include:
+
+- Authentication
+- User management
+- Organization/workspace architecture
+- Multi-tenancy
+- Role-based access control
+- Project management
+- Sprint management
+- Task management
+- Team management
+- Dashboard
+- Analytics
+- Notifications
+- Activity tracking
+- Search
+- UI/UX improvements
+- Security hardening
+- Testing
+- Deployment architecture
+
+Some features shown in the planned architecture are not implemented yet.
+
+Interfaces and database models may change as development progresses.
+
+---
+
+# 🎯 Vision
+
+The long-term vision of SprintFlow is to become a complete Agile project management SaaS platform that combines:
+
+```text
+Project Management
+        +
+Agile/Scrum Workflows
+        +
+Team Collaboration
+        +
+Project Analytics
+        +
+Developer Integrations
+        +
+Automation
+        +
+AI-assisted Insights
