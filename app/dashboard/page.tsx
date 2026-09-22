@@ -14,7 +14,7 @@ export default function DashboardPage() {
           </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-              Welcome back. Here is what&apos;s happening across your workspace.
+            Welcome back. Here is what&apos;s happening across your workspace.
           </p>
         </div>
 
