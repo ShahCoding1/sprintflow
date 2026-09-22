@@ -1,62 +1,61 @@
 "use client";
 
-import {
-  Bell,
-  Command,
-  Search,
-} from "lucide-react";
+import { signOut } from "next-auth/react";
+import { Bell, LogOut, Search } from "lucide-react";
 
 export function Header() {
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background px-6">
+    <header className="flex h-16 items-center justify-between border-b bg-background px-6">
       {/* Search */}
-      <button
-        type="button"
-        className="flex h-9 w-full max-w-md items-center gap-3 rounded-lg border bg-muted/30 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/60"
-      >
-        <Search className="size-4 shrink-0" />
+      <div className="flex items-center gap-3">
+        <div className="relative hidden w-80 md:block">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
-        <span className="flex-1 text-left">
-          Search anything...
-        </span>
+          <input
+            type="search"
+            placeholder="Search anything..."
+            className="h-10 w-full rounded-lg border bg-muted/30 pl-9 pr-20 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
 
-        <span className="hidden items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium sm:flex">
-          <Command className="size-3" />
-          K
-        </span>
-      </button>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 rounded border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+            ⌘ K
+          </div>
+        </div>
+      </div>
 
-      {/* Actions */}
-      <div className="ml-4 flex items-center gap-2">
+      {/* Right Actions */}
+      <div className="flex items-center gap-3">
         {/* Notifications */}
         <button
           type="button"
           aria-label="Notifications"
-          className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="relative inline-flex size-10 items-center justify-center rounded-lg transition hover:bg-muted"
         >
-          <Bell className="size-4" />
+          <Bell className="size-5 text-muted-foreground" />
 
-          <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
+          <span className="absolute right-2 top-2 size-2 rounded-full bg-primary" />
         </button>
 
         {/* User */}
+        <div className="hidden items-center gap-3 border-l pl-3 sm:flex">
+          <div className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+            U
+          </div>
+
+          <div className="hidden leading-tight lg:block">
+            <p className="text-sm font-medium">User</p>
+            <p className="text-xs text-muted-foreground">Member</p>
+          </div>
+        </div>
+
+        {/* Sign Out */}
         <button
           type="button"
-          className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-muted"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
         >
-          <div className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-            SH
-          </div>
-
-          <div className="hidden text-left md:block">
-            <p className="text-sm font-medium leading-none">
-              User
-            </p>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              Member
-            </p>
-          </div>
+          <LogOut className="size-4" />
+          <span className="hidden sm:inline">Sign out</span>
         </button>
       </div>
     </header>
