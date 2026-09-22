@@ -5,7 +5,7 @@
 
 **SprintFlow** is a modern, scalable, multi-tenant SaaS platform designed to help software development teams plan projects, manage sprints, organize tasks, collaborate efficiently, and understand project performance through meaningful analytics.
 # 🚧 PROJECT STATUS: UNDER DEVELOPMENT
-🚧 +==============================================================================================+ 🚧
+🚧 +===============================================================================+ 🚧
 
 SprintFlow is currently being developed as a production-oriented software engineering project. The architecture, authentication system, database layer, organization/workspace system, UI, security model, and core SaaS foundations are being built incrementally.
 
