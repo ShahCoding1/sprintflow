@@ -3,31 +3,38 @@ import { prisma } from "@/lib/db";
 export const organizationRepository = {
   findBySlug(slug: string) {
     return prisma.organization.findUnique({
-      where: {
-        slug,
-      },
+      where: { slug },
     });
   },
 
   findById(id: string) {
     return prisma.organization.findUnique({
+      where: { id },
+    });
+  },
+
+  findMembershipByUserAndOrganization(
+    userId: string,
+    organizationId: string,
+  ) {
+    return prisma.organizationMember.findUnique({
       where: {
-        id,
+        organizationId_userId: {
+          organizationId,
+          userId,
+        },
+      },
+      include: {
+        organization: true,
       },
     });
   },
 
   findMembershipsByUserId(userId: string) {
     return prisma.organizationMember.findMany({
-      where: {
-        userId,
-      },
-      include: {
-        organization: true,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
+      where: { userId },
+      include: { organization: true },
+      orderBy: { createdAt: "asc" },
     });
   },
 
