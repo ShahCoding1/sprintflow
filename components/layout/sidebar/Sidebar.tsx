@@ -3,7 +3,6 @@
 import {
   BarChart3,
   CheckSquare,
-  ChevronDown,
   FolderKanban,
   LayoutDashboard,
   Settings,
@@ -12,11 +11,20 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import {
+  WorkspaceSwitcher,
+  type Workspace,
+} from "@/components/layout/sidebar/WorkspaceSwitcher";
 
 type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
+};
+
+type SidebarProps = {
+  workspace: Workspace | null;
+  workspaces: Workspace[];
 };
 
 const mainNavigation: NavItem[] = [
@@ -55,7 +63,7 @@ const secondaryNavigation: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ workspace, workspaces }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r bg-background">
       {/* Brand */}
@@ -73,27 +81,10 @@ export function Sidebar() {
 
       {/* Workspace */}
       <div className="border-b p-3">
-        <button
-          type="button"
-          className={cn(
-            "flex w-full items-center gap-3 rounded-lg p-2",
-            "text-left transition-colors",
-            "hover:bg-muted",
-          )}
-        >
-          <div className="flex size-9 items-center justify-center rounded-md bg-muted font-semibold">
-            SF
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">SprintFlow Workspace</p>
-            <p className="truncate text-xs text-muted-foreground">
-              Personal workspace
-            </p>
-          </div>
-
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        </button>
+        <WorkspaceSwitcher
+          workspace={workspace}
+          workspaces={workspaces}
+        />
       </div>
 
       {/* Navigation */}
