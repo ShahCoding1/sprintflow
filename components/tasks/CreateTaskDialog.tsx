@@ -1,8 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Loader2,
+  Plus,
+  X,
+} from "lucide-react";
+import {
+  useEffect,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -16,22 +23,43 @@ type CreateTaskDialogProps = {
   onCreated: (task: BoardTask) => void;
 };
 
-type CreateTaskFormInput = z.input<typeof createTaskSchema>;
-type CreateTaskFormOutput = z.output<typeof createTaskSchema>;
+type SprintOption = {
+  id: string;
+  name: string;
+  status: "PLANNED" | "ACTIVE" | "COMPLETED";
+};
+
+type CreateTaskFormInput =
+  z.input<typeof createTaskSchema>;
+
+type CreateTaskFormOutput =
+  z.output<typeof createTaskSchema>;
 
 export default function CreateTaskDialog({
   projectId,
   onCreated,
 }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverError, setServerError] =
+    useState<string | null>(null);
+  const [sprints, setSprints] =
+    useState<SprintOption[]>([]);
+  const [sprintsLoading, setSprintsLoading] =
+    useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateTaskFormInput, unknown, CreateTaskFormOutput>({
+    formState: {
+      errors,
+      isSubmitting,
+    },
+  } = useForm<
+    CreateTaskFormInput,
+    unknown,
+    CreateTaskFormOutput
+  >({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
       title: "",
@@ -47,7 +75,63 @@ export default function CreateTaskDialog({
     },
   });
 
-  const closeDialog = () => {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSprints() {
+      try {
+        setSprintsLoading(true);
+
+        const response = await fetch(
+          `/api/projects/${projectId}/sprints`,
+          {
+            cache: "no-store",
+          },
+        );
+
+        const result = (await response.json()) as {
+          success?: boolean;
+          message?: string;
+          sprints?: SprintOption[];
+        };
+
+        if (!response.ok) {
+          throw new Error(
+            result.message ??
+              "Unable to load sprints.",
+          );
+        }
+
+        if (!cancelled) {
+          setSprints(result.sprints ?? []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setServerError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load sprints.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setSprintsLoading(false);
+        }
+      }
+    }
+
+    void loadSprints();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
+
+  function closeDialog() {
     if (isSubmitting) {
       return;
     }
@@ -55,9 +139,11 @@ export default function CreateTaskDialog({
     setOpen(false);
     setServerError(null);
     reset();
-  };
+  }
 
-  const onSubmit = async (data: CreateTaskFormOutput) => {
+  async function onSubmit(
+    data: CreateTaskFormOutput,
+  ) {
     setServerError(null);
 
     try {
@@ -70,7 +156,8 @@ export default function CreateTaskDialog({
           },
           body: JSON.stringify({
             title: data.title,
-            description: data.description || undefined,
+            description:
+              data.description || undefined,
             type: data.type,
             status: data.status,
             priority: data.priority,
@@ -89,18 +176,27 @@ export default function CreateTaskDialog({
         task?: BoardTask;
       };
 
-      if (!response.ok || !result.success || !result.task) {
+      if (
+        !response.ok ||
+        !result.success ||
+        !result.task
+      ) {
         throw new Error(
-          result.message ?? "Unable to create the task.",
+          result.message ??
+            "Unable to create the task.",
         );
       }
 
       onCreated(result.task);
 
       setOpen(false);
+      setServerError(null);
       reset();
     } catch (error) {
-      console.error("Create task error:", error);
+      console.error(
+        "Create task error:",
+        error,
+      );
 
       setServerError(
         error instanceof Error
@@ -108,7 +204,7 @@ export default function CreateTaskDialog({
           : "Unable to create the task.",
       );
     }
-  };
+  }
 
   return (
     <>
@@ -128,7 +224,10 @@ export default function CreateTaskDialog({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
               closeDialog();
             }
           }}
@@ -149,7 +248,8 @@ export default function CreateTaskDialog({
                 </h2>
 
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Add a new task to this project.
+                  Add a new task to this
+                  project.
                 </p>
               </div>
 
@@ -238,11 +338,21 @@ export default function CreateTaskDialog({
                     {...register("type")}
                     className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                   >
-                    <option value="EPIC">Epic</option>
-                    <option value="STORY">Story</option>
-                    <option value="TASK">Task</option>
-                    <option value="BUG">Bug</option>
-                    <option value="SUBTASK">Subtask</option>
+                    <option value="EPIC">
+                      Epic
+                    </option>
+                    <option value="STORY">
+                      Story
+                    </option>
+                    <option value="TASK">
+                      Task
+                    </option>
+                    <option value="BUG">
+                      Bug
+                    </option>
+                    <option value="SUBTASK">
+                      Subtask
+                    </option>
                   </select>
                 </div>
 
@@ -259,10 +369,18 @@ export default function CreateTaskDialog({
                     {...register("priority")}
                     className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                   >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
+                    <option value="LOW">
+                      Low
+                    </option>
+                    <option value="MEDIUM">
+                      Medium
+                    </option>
+                    <option value="HIGH">
+                      High
+                    </option>
+                    <option value="URGENT">
+                      Urgent
+                    </option>
                   </select>
                 </div>
 
@@ -281,19 +399,67 @@ export default function CreateTaskDialog({
                     max="100"
                     step="1"
                     placeholder="0"
-                    {...register("storyPoints", {
-                      setValueAs: (value) =>
-                        value === "" ? null : Number(value),
-                    })}
+                    {...register(
+                      "storyPoints",
+                      {
+                        setValueAs: (value) =>
+                          value === ""
+                            ? null
+                            : Number(value),
+                      },
+                    )}
                     className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                   />
 
                   {errors.storyPoints && (
                     <p className="text-xs text-destructive">
-                      {errors.storyPoints.message}
+                      {
+                        errors.storyPoints
+                          .message
+                      }
                     </p>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="task-sprint"
+                  className="text-sm font-medium"
+                >
+                  Sprint
+                </label>
+
+                <select
+                  id="task-sprint"
+                  {...register("sprintId")}
+                  disabled={sprintsLoading}
+                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">
+                    {sprintsLoading
+                      ? "Loading sprints..."
+                      : "Backlog / No Sprint"}
+                  </option>
+
+                  {sprints.map((sprint) => (
+                    <option
+                      key={sprint.id}
+                      value={sprint.id}
+                    >
+                      {sprint.name}
+                      {sprint.status === "ACTIVE"
+                        ? " • Active"
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+
+                {errors.sprintId && (
+                  <p className="text-xs text-destructive">
+                    {errors.sprintId.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
