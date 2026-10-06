@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import EditProjectDialog from "@/components/projects/EditProjectDialog";
+import ProjectMembers from "@/components/projects/ProjectMembers";
 
 type ProjectStatus =
   | "PLANNING"
@@ -262,6 +263,9 @@ export default function ProjectDetail({
             />
           </div>
         </section>
+
+        {/* Project Members */}
+        <ProjectMembers projectId={project.id} />
 
         {/* Coming Next */}
         <section className="rounded-2xl border border-dashed bg-muted/20 p-6 sm:p-8">
