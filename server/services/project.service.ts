@@ -49,4 +49,61 @@ export const projectService = {
       organizationId,
     );
   },
+
+  async updateProject(data: {
+    projectId: string;
+    organizationId: string;
+    name: string;
+    key: string;
+    description?: string;
+    status:
+      | "PLANNING"
+      | "ACTIVE"
+      | "COMPLETED"
+      | "ARCHIVED";
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }) {
+    const normalizedKey = data.key.trim().toUpperCase();
+
+    const existingProject =
+      await projectRepository.findByIdAndOrganization(
+        data.projectId,
+        data.organizationId,
+      );
+
+    if (!existingProject) {
+      throw new Error("Project not found.");
+    }
+
+    const projectWithSameKey =
+      await projectRepository.findByKey(
+        data.organizationId,
+        normalizedKey,
+      );
+
+    if (
+      projectWithSameKey &&
+      projectWithSameKey.id !== data.projectId
+    ) {
+      throw new Error(
+        `A project with the key "${normalizedKey}" already exists in this workspace.`,
+      );
+    }
+
+    const project = await projectRepository.update(
+      data.projectId,
+      {
+        name: data.name.trim(),
+        key: normalizedKey,
+        description:
+          data.description?.trim() || undefined,
+        status: data.status,
+        startDate: data.startDate,
+        endDate: data.endDate,
+      },
+    );
+
+    return project;
+  },
 };

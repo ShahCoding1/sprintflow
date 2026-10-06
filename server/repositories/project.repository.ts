@@ -57,4 +57,34 @@ export const projectRepository = {
       },
     });
   },
+
+  update(
+    id: string,
+    data: {
+      name: string;
+      key: string;
+      description?: string;
+      status:
+        | "PLANNING"
+        | "ACTIVE"
+        | "COMPLETED"
+        | "ARCHIVED";
+      startDate?: Date | null;
+      endDate?: Date | null;
+    },
+  ) {
+    return prisma.project.update({
+      where: {
+        id,
+      },
+      data: {
+        name: data.name,
+        key: data.key,
+        description: data.description,
+        status: data.status,
+        startDate: data.startDate,
+        endDate: data.endDate,
+      },
+    });
+  },
 };
