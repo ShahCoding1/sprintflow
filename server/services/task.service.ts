@@ -237,4 +237,80 @@ export const taskService = {
       },
     );
   },
+
+  async moveTask(data: {
+    taskId: string;
+    projectId: string;
+    organizationId: string;
+    status: TaskStatus;
+    position: number;
+  }) {
+    const project =
+      await projectRepository.findByIdAndOrganization(
+        data.projectId,
+        data.organizationId,
+      );
+
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    const existingTask =
+      await taskRepository.findByIdAndProject(
+        data.taskId,
+        data.projectId,
+      );
+
+    if (!existingTask) {
+      throw new Error("Task not found.");
+    }
+
+    const tasks =
+      await taskRepository.findByProject(
+        data.projectId,
+      );
+
+    const targetTasks = tasks
+      .filter(
+        (task) =>
+          task.id !== data.taskId &&
+          task.status === data.status,
+      )
+      .sort(
+        (a, b) => a.position - b.position,
+      );
+
+    const boundedPosition = Math.min(
+      Math.max(data.position, 0),
+      targetTasks.length,
+    );
+
+    const reorderedTasks = [
+      ...targetTasks.slice(0, boundedPosition),
+      existingTask,
+      ...targetTasks.slice(boundedPosition),
+    ];
+
+    await prisma.$transaction(
+      reorderedTasks.map((task, index) =>
+        prisma.task.update({
+          where: {
+            id: task.id,
+          },
+          data: {
+            status:
+              task.id === data.taskId
+                ? data.status
+                : task.status,
+            position: index,
+          },
+        }),
+      ),
+    );
+
+    return taskRepository.findByIdAndProject(
+      data.taskId,
+      data.projectId,
+    );
+  },
 };

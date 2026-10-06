@@ -11,6 +11,14 @@ import {
   Zap,
 } from "lucide-react";
 
+import type {
+  DraggableAttributes,
+} from "@dnd-kit/core";
+
+import type {
+  SyntheticListenerMap,
+} from "@dnd-kit/core/dist/hooks/utilities";
+
 import EditTaskDialog from "./EditTaskDialog";
 
 export type TaskStatus =
@@ -58,8 +66,8 @@ type TaskCardProps = {
   task: BoardTask;
   onUpdated: (task: BoardTask) => void;
   dragHandleProps?: {
-    attributes?: Record<string, unknown>;
-    listeners?: Record<string, unknown>;
+    attributes: DraggableAttributes;
+    listeners: SyntheticListenerMap | undefined;
   };
 };
 
