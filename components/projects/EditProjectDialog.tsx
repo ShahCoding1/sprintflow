@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarDays, Loader2, Save, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import {
   updateProjectSchema,
@@ -24,6 +25,8 @@ type Project = {
   status: ProjectStatus;
   startDate: Date | string | null;
   endDate: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 };
 
 type EditProjectDialogProps = {
@@ -34,7 +37,7 @@ type EditProjectDialogProps = {
 };
 
 function toNullableDate(
-  value: Date | string | undefined,
+  value: Date | string | null | undefined,
 ) {
   if (!value) {
     return null;
@@ -46,6 +49,12 @@ function toNullableDate(
 
   return new Date(`${value}T00:00:00`);
 }
+
+type UpdateProjectFormInput =
+  z.input<typeof updateProjectSchema>;
+
+type UpdateProjectFormOutput =
+  z.output<typeof updateProjectSchema>;
 
 export default function EditProjectDialog({
   open,
@@ -63,7 +72,11 @@ export default function EditProjectDialog({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<UpdateProjectInput>({
+  } = useForm<
+    UpdateProjectFormInput,
+    unknown,
+    UpdateProjectFormOutput
+  >({
     resolver: zodResolver(updateProjectSchema),
     defaultValues: {
       name: project.name,
@@ -126,15 +139,27 @@ export default function EditProjectDialog({
             key: data.key,
             description: data.description ?? "",
             status: data.status,
-            startDate: toNullableDate(data.startDate),
-            endDate: toNullableDate(data.endDate),
+            startDate: toNullableDate(
+              data.startDate,
+            ),
+            endDate: toNullableDate(
+              data.endDate,
+            ),
           }),
         },
       );
 
-      const result = await response.json();
+      const result: {
+        success?: boolean;
+        message?: string;
+        project?: Project;
+      } = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (
+        !response.ok ||
+        !result.success ||
+        !result.project
+      ) {
         throw new Error(
           result.message ??
             "Unable to update the project.",
