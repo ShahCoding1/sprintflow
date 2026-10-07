@@ -1,16 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import {
   CalendarDays,
   CheckCircle2,
   Clock3,
   MoreHorizontal,
+  Play,
   Target,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
 
 import EditSprintDialog from "./EditSprintDialog";
+import SprintSummary from "./SprintSummary";
 
 export type SprintStatus =
   | "PLANNED"
@@ -87,6 +90,9 @@ export default function SprintCard({
   const [menuOpen, setMenuOpen] =
     useState(false);
 
+  const [actionLoading, setActionLoading] =
+    useState(false);
+
   const config =
     statusConfig[sprint.status];
 
@@ -96,19 +102,91 @@ export default function SprintCard({
     sprint.status === "ACTIVE" ||
     sprint._count.tasks > 0;
 
+  async function changeSprintStatus(
+    status: "ACTIVE" | "COMPLETED",
+  ) {
+    if (actionLoading) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `${status === "ACTIVE" ? "Start" : "Complete"} "${sprint.name}"?`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setMenuOpen(false);
+
+      const response = await fetch(
+        `/api/projects/${projectId}/sprints/${sprint.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            name: sprint.name,
+            goal: sprint.goal,
+            status,
+            startDate:
+              status === "ACTIVE"
+                ? sprint.startDate ??
+                  new Date().toISOString()
+                : sprint.startDate,
+            endDate:
+              status === "COMPLETED"
+                ? new Date().toISOString()
+                : sprint.endDate,
+          }),
+        },
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ??
+            "Unable to update sprint.",
+        );
+      }
+
+      if (data.sprint) {
+        onUpdated(data.sprint);
+      }
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to update sprint.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   function handleDelete() {
     setMenuOpen(false);
     onDelete(sprint);
   }
 
   return (
-    <article className="group rounded-2xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <article className="rounded-2xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-semibold">
+            <Link
+              href={`/projects/${projectId}/sprints/${sprint.id}`}
+              className="truncate text-base font-semibold transition-colors hover:text-primary hover:underline hover:underline-offset-4"
+            >
               {sprint.name}
-            </h3>
+            </Link>
 
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${config.className}`}
@@ -130,6 +208,40 @@ export default function SprintCard({
         </div>
 
         <div className="relative flex shrink-0 items-center gap-1">
+          {sprint.status === "PLANNED" && (
+            <button
+              type="button"
+              aria-label={`Start ${sprint.name}`}
+              onClick={() =>
+                void changeSprintStatus(
+                  "ACTIVE",
+                )
+              }
+              disabled={actionLoading}
+              title="Start sprint"
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-emerald-500/10 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Play className="size-4" />
+            </button>
+          )}
+
+          {sprint.status === "ACTIVE" && (
+            <button
+              type="button"
+              aria-label={`Complete ${sprint.name}`}
+              onClick={() =>
+                void changeSprintStatus(
+                  "COMPLETED",
+                )
+              }
+              disabled={actionLoading}
+              title="Complete sprint"
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-blue-500/10 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <CheckCircle2 className="size-4" />
+            </button>
+          )}
+
           <EditSprintDialog
             projectId={projectId}
             sprint={sprint}
@@ -140,7 +252,10 @@ export default function SprintCard({
             type="button"
             aria-label={`Delete ${sprint.name}`}
             onClick={handleDelete}
-            disabled={deleteDisabled}
+            disabled={
+              deleteDisabled ||
+              actionLoading
+            }
             title={
               sprint.status === "ACTIVE"
                 ? "Active sprints cannot be deleted"
@@ -162,13 +277,44 @@ export default function SprintCard({
                 (current) => !current,
               )
             }
-            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            disabled={actionLoading}
+            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
           >
             <MoreHorizontal className="size-4" />
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border bg-popover p-1.5 shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border bg-popover p-1.5 shadow-lg">
+              {sprint.status === "PLANNED" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void changeSprintStatus(
+                      "ACTIVE",
+                    )
+                  }
+                  className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted"
+                >
+                  <Play className="mr-2 size-4" />
+                  Start sprint
+                </button>
+              )}
+
+              {sprint.status === "ACTIVE" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void changeSprintStatus(
+                      "COMPLETED",
+                    )
+                  }
+                  className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted"
+                >
+                  <CheckCircle2 className="mr-2 size-4" />
+                  Complete sprint
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() =>
@@ -192,6 +338,12 @@ export default function SprintCard({
           )}
         </div>
       </div>
+
+      {actionLoading && (
+        <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          Updating sprint status...
+        </div>
+      )}
 
       <div className="mt-5 grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-3">
         <div className="flex items-center gap-2">
@@ -236,6 +388,11 @@ export default function SprintCard({
           </div>
         </div>
       </div>
+
+      <SprintSummary
+        projectId={projectId}
+        sprintId={sprint.id}
+      />
     </article>
   );
 }

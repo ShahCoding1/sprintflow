@@ -17,6 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import {
   AlertCircle,
+  Check,
+  ChevronDown,
   Loader2,
   RefreshCw,
 } from "lucide-react";
@@ -78,6 +80,21 @@ type MoveResponse = {
   message?: string;
 };
 
+type SprintOption = {
+  id: string;
+  name: string;
+  status: "PLANNED" | "ACTIVE" | "COMPLETED";
+  _count: {
+    tasks: number;
+  };
+};
+
+type SprintResponse = {
+  success: boolean;
+  sprints?: SprintOption[];
+  message?: string;
+};
+
 function getColumnTasks(
   tasks: BoardTask[],
   status: TaskStatus,
@@ -104,6 +121,15 @@ export default function TaskBoard({
 
   const [activeTaskId, setActiveTaskId] =
     useState<string | null>(null);
+
+  const [sprints, setSprints] =
+    useState<SprintOption[]>([]);
+
+  const [selectedSprintId, setSelectedSprintId] =
+    useState<string>("ALL");
+
+  const [sprintsLoading, setSprintsLoading] =
+    useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -193,6 +219,48 @@ export default function TaskBoard({
             );
             setError(null);
           }
+
+          try {
+            const sprintResponse =
+              await fetch(
+                `/api/projects/${projectId}/sprints`,
+                {
+                  cache: "no-store",
+                },
+              );
+
+            const sprintResult =
+              (await sprintResponse.json()) as SprintResponse;
+
+            if (
+              !sprintResponse.ok ||
+              !sprintResult.success
+            ) {
+              throw new Error(
+                sprintResult.message ??
+                  "Unable to load sprints.",
+              );
+            }
+
+            if (!cancelled) {
+              setSprints(
+                sprintResult.sprints ?? [],
+              );
+            }
+          } catch (sprintError) {
+            console.error(
+              "Load sprint filter error:",
+              sprintError,
+            );
+
+            if (!cancelled) {
+              setSprints([]);
+            }
+          } finally {
+            if (!cancelled) {
+              setSprintsLoading(false);
+            }
+          }
         } catch (error) {
           console.error(
             "Load task board error:",
@@ -220,30 +288,52 @@ export default function TaskBoard({
     };
   }, [projectId]);
 
+
+  const filteredTasks = useMemo(
+    () => {
+      if (selectedSprintId === "ALL") {
+        return tasks;
+      }
+
+      if (selectedSprintId === "BACKLOG") {
+        return tasks.filter(
+          (task) => !task.sprintId,
+        );
+      }
+
+      return tasks.filter(
+        (task) =>
+          task.sprintId ===
+          selectedSprintId,
+      );
+    },
+    [selectedSprintId, tasks],
+  );
+
   const groupedTasks = useMemo(
     () => ({
       TODO: getColumnTasks(
-        tasks,
+        filteredTasks,
         "TODO",
       ),
       IN_PROGRESS: getColumnTasks(
-        tasks,
+        filteredTasks,
         "IN_PROGRESS",
       ),
       IN_REVIEW: getColumnTasks(
-        tasks,
+        filteredTasks,
         "IN_REVIEW",
       ),
       DONE: getColumnTasks(
-        tasks,
+        filteredTasks,
         "DONE",
       ),
       BLOCKED: getColumnTasks(
-        tasks,
+        filteredTasks,
         "BLOCKED",
       ),
     }),
-    [tasks],
+    [filteredTasks],
   );
 
   const activeTask = activeTaskId
@@ -785,7 +875,7 @@ export default function TaskBoard({
 
   if (error && tasks.length === 0) {
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border bg-card px-6 text-center">
+      <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl borderbg-card px-6 text-center">
         <AlertCircle className="size-10 text-destructive" />
 
         <h2 className="mt-4 text-base font-semibold">
@@ -833,6 +923,100 @@ export default function TaskBoard({
           <p className="text-sm text-muted-foreground">
             Manage work across your project workflow.
           </p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label
+            htmlFor="task-board-sprint-filter"
+            className="sr-only"
+          >
+            Filter tasks by sprint
+          </label>
+
+          <div className="relative">
+            <select
+              id="task-board-sprint-filter"
+              value={selectedSprintId}
+              onChange={(event) =>
+                setSelectedSprintId(
+                  event.target.value,
+                )
+              }
+              disabled={sprintsLoading}
+              className="h-9 w-full appearance-none rounded-lg border bg-background py-2 pl-3 pr-9 text-sm font-medium outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px]"
+            >
+              <option value="ALL">
+                All Sprints · {tasks.length}
+              </option>
+
+              <option value="BACKLOG">
+                Backlog / No Sprint · {
+                  tasks.filter(
+                    (task) => !task.sprintId,
+                  ).length
+                }
+              </option>
+
+              {sprints.map((sprint) => {
+                const taskCount =
+                  tasks.filter(
+                    (task) =>
+                      task.sprintId ===
+                      sprint.id,
+                  ).length;
+
+                return (
+                  <option
+                    key={sprint.id}
+                    value={sprint.id}
+                  >
+                    {sprint.status ===
+                    "ACTIVE"
+                      ? "● "
+                      : ""}
+                    {sprint.name} ·{" "}
+                    {taskCount}
+                  </option>
+                );
+              })}
+            </select>
+
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {selectedSprintId === "ALL" ? (
+              <span>
+                Showing all project tasks
+              </span>
+            ) : selectedSprintId ===
+              "BACKLOG" ? (
+              <span>
+                Showing backlog tasks
+              </span>
+            ) : (
+              (() => {
+                const selectedSprint =
+                  sprints.find(
+                    (sprint) =>
+                      sprint.id ===
+                      selectedSprintId,
+                  );
+
+                return selectedSprint ? (
+                  <>
+                    {selectedSprint.status ===
+                      "ACTIVE" && (
+                      <Check className="size-3.5 text-primary" />
+                    )}
+                    <span className="max-w-[180px] truncate">
+                      {selectedSprint.name}
+                    </span>
+                  </>
+                ) : null;
+              })()
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
