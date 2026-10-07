@@ -62,11 +62,7 @@ type SearchResponse = {
 
 type SearchItem = {
   id: string;
-  type:
-    | "project"
-    | "task"
-    | "sprint"
-    | "member";
+  type: "project" | "task" | "sprint" | "member";
   title: string;
   subtitle: string;
   href: string;
@@ -77,31 +73,14 @@ type CommandPaletteProps = {
   onClose: () => void;
 };
 
-function getInitials(
-  name: string | null,
-  email: string | null,
-) {
-  const value =
-    name?.trim() ||
-    email?.trim() ||
-    "U";
+const EMPTY_RESULTS: SearchResponse = {
+  projects: [],
+  tasks: [],
+  sprints: [],
+  members: [],
+};
 
-  const words = value
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (words.length === 1) {
-    return words[0]
-      .slice(0, 2)
-      .toUpperCase();
-  }
-
-  return `${words[0][0]}${words[1][0]}`.toUpperCase();
-}
-
-function getTypeLabel(
-  type: SearchItem["type"],
-) {
+function getTypeLabel(type: SearchItem["type"]) {
   switch (type) {
     case "project":
       return "Project";
@@ -114,9 +93,7 @@ function getTypeLabel(
   }
 }
 
-function getTypeIcon(
-  type: SearchItem["type"],
-) {
+function getTypeIcon(type: SearchItem["type"]) {
   switch (type) {
     case "project":
       return FolderKanban;
@@ -135,113 +112,22 @@ export default function CommandPalette({
 }: CommandPaletteProps) {
   const router = useRouter();
 
-  const [query, setQuery] =
-    useState("");
-
+  const [query, setQuery] = useState("");
   const [results, setResults] =
-    useState<SearchResponse>({
-      projects: [],
-      tasks: [],
-      sprints: [],
-      members: [],
-    });
-
-  const [isLoading, setIsLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const [selectedIndex, setSelectedIndex] =
-    useState(0);
-
-  const search = useCallback(
-    async (value: string) => {
-      const trimmed = value.trim();
-
-      if (!trimmed) {
-        setResults({
-          projects: [],
-          tasks: [],
-          sprints: [],
-          members: [],
-        });
-
-        setError(null);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(
-          `/api/search?q=${encodeURIComponent(
-            trimmed,
-          )}&limit=20`,
-          {
-            cache: "no-store",
-          },
-        );
-
-        const data =
-          (await response.json()) as
-            | SearchResponse
-            | { message?: string };
-
-        if (!response.ok) {
-          throw new Error(
-            "message" in data && data.message
-              ? data.message
-              : "Search failed.",
-          );
-        }
-
-        setResults(
-          data as SearchResponse,
-        );
-        setSelectedIndex(0);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Search failed.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const timeout = window.setTimeout(
-      () => {
-        void search(query);
-      },
-      250,
-    );
-
-    return () =>
-      window.clearTimeout(timeout);
-  }, [open, query, search]);
+    useState<SearchResponse>(EMPTY_RESULTS);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   const items = useMemo<SearchItem[]>(
     () => [
-      ...results.projects.map(
-        (project) => ({
-          id: project.id,
-          type: "project" as const,
-          title: project.name,
-          subtitle: project.key,
-          href: `/projects/${project.id}`,
-        }),
-      ),
+      ...results.projects.map((project) => ({
+        id: project.id,
+        type: "project" as const,
+        title: project.name,
+        subtitle: project.key,
+        href: `/projects/${project.id}`,
+      })),
 
       ...results.tasks.map((task) => ({
         id: task.id,
@@ -275,36 +161,128 @@ export default function CommandPalette({
     [results],
   );
 
-  useEffect(() => {
-    if (selectedIndex >= items.length) {
-      setSelectedIndex(
-        Math.max(items.length - 1, 0),
-      );
-    }
-  }, [items.length, selectedIndex]);
+  /*
+   * Keep the selected index valid without synchronously
+   * updating state from an effect.
+   */
+  const activeSelectedIndex =
+    items.length === 0
+      ? 0
+      : Math.min(selectedIndex, items.length - 1);
 
+  const search = useCallback(
+    async (value: string) => {
+      const trimmed = value.trim();
+
+      if (!trimmed) {
+        setResults(EMPTY_RESULTS);
+        setError(null);
+        setIsLoading(false);
+        setSelectedIndex(0);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(
+            trimmed,
+          )}&limit=20`,
+          {
+            cache: "no-store",
+          },
+        );
+
+        const data = (await response.json()) as
+          | SearchResponse
+          | { message?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "message" in data && data.message
+              ? data.message
+              : "Search failed.",
+          );
+        }
+
+        setResults(data as SearchResponse);
+        setSelectedIndex(0);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Search failed.",
+        );
+        setResults(EMPTY_RESULTS);
+        setSelectedIndex(0);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
+
+  /*
+   * Closing the palette explicitly resets its local state.
+   * This avoids an effect that synchronously calls setState
+   * whenever `open` changes.
+   */
+  const handleClose = useCallback(() => {
+    setQuery("");
+    setResults(EMPTY_RESULTS);
+    setError(null);
+    setIsLoading(false);
+    setSelectedIndex(0);
+    onClose();
+  }, [onClose]);
+
+  /*
+   * Debounced search.
+   *
+   * The effect schedules an external timer and does not
+   * synchronously update React state.
+   */
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    function handleKeyDown(
-      event: KeyboardEvent,
-    ) {
+    const timeoutId = window.setTimeout(() => {
+      void search(query);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [open, query, search]);
+
+  /*
+   * Keyboard navigation.
+   */
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        handleClose();
         return;
       }
 
       if (event.key === "ArrowDown") {
         event.preventDefault();
 
-        setSelectedIndex((current) =>
-          items.length === 0
-            ? 0
-            : (current + 1) % items.length,
-        );
+        setSelectedIndex((current) => {
+          if (items.length === 0) {
+            return 0;
+          }
+
+          return (current + 1) % items.length;
+        });
 
         return;
       }
@@ -312,28 +290,33 @@ export default function CommandPalette({
       if (event.key === "ArrowUp") {
         event.preventDefault();
 
-        setSelectedIndex((current) =>
-          items.length === 0
-            ? 0
-            : current === 0
-              ? items.length - 1
-              : current - 1,
-        );
+        setSelectedIndex((current) => {
+          if (items.length === 0) {
+            return 0;
+          }
+
+          return current === 0
+            ? items.length - 1
+            : current - 1;
+        });
 
         return;
       }
 
       if (
         event.key === "Enter" &&
-        items[selectedIndex]
+        items.length > 0
       ) {
         event.preventDefault();
 
         const item =
-          items[selectedIndex];
+          items[activeSelectedIndex];
 
-        onClose();
-        setQuery("");
+        if (!item) {
+          return;
+        }
+
+        handleClose();
         router.push(item.href);
       }
     }
@@ -343,32 +326,19 @@ export default function CommandPalette({
       handleKeyDown,
     );
 
-    return () =>
+    return () => {
       window.removeEventListener(
         "keydown",
         handleKeyDown,
       );
+    };
   }, [
+    activeSelectedIndex,
+    handleClose,
     items,
-    onClose,
     open,
     router,
-    selectedIndex,
   ]);
-
-  useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setResults({
-        projects: [],
-        tasks: [],
-        sprints: [],
-        members: [],
-      });
-      setError(null);
-      setSelectedIndex(0);
-    }
-  }, [open]);
 
   if (!open) {
     return null;
@@ -381,10 +351,8 @@ export default function CommandPalette({
       aria-modal="true"
       aria-label="Global search"
       onMouseDown={(event) => {
-        if (
-          event.target === event.currentTarget
-        ) {
-          onClose();
+        if (event.target === event.currentTarget) {
+          handleClose();
         }
       }}
     >
@@ -395,9 +363,9 @@ export default function CommandPalette({
           <input
             autoFocus
             value={query}
-            onChange={(event) =>
-              setQuery(event.target.value)
-            }
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
             placeholder="Search projects, tasks, sprints, members..."
             className="h-14 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             aria-label="Search"
@@ -409,7 +377,7 @@ export default function CommandPalette({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close search"
             className="rounded-md p-1.5 transition hover:bg-muted"
           >
@@ -419,15 +387,9 @@ export default function CommandPalette({
 
         <div className="border-b px-4 py-2 text-xs text-muted-foreground">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>
-              ↑↓ Navigate
-            </span>
-            <span>
-              Enter Open
-            </span>
-            <span>
-              Esc Close
-            </span>
+            <span>↑↓ Navigate</span>
+            <span>Enter Open</span>
+            <span>Esc Close</span>
           </div>
         </div>
 
@@ -458,41 +420,40 @@ export default function CommandPalette({
               </div>
             )}
 
-          {!error &&
-            !query.trim() && (
-              <div className="px-4 py-12 text-center">
-                <Search className="mx-auto size-8 text-muted-foreground/50" />
+          {!error && !query.trim() && (
+            <div className="px-4 py-12 text-center">
+              <Search className="mx-auto size-8 text-muted-foreground/50" />
 
-                <p className="mt-3 text-sm font-medium">
-                  Search SprintFlow
-                </p>
+              <p className="mt-3 text-sm font-medium">
+                Search SprintFlow
+              </p>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Find projects, tasks, sprints,
-                  and workspace members.
-                </p>
-              </div>
-            )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Find projects, tasks, sprints,
+                and workspace members.
+              </p>
+            </div>
+          )}
 
           {items.length > 0 && (
             <div className="p-2">
               {items.map((item, index) => {
-                const Icon =
-                  getTypeIcon(item.type);
+                const Icon = getTypeIcon(
+                  item.type,
+                );
 
                 const isSelected =
-                  index === selectedIndex;
+                  index === activeSelectedIndex;
 
                 return (
                   <button
                     key={`${item.type}-${item.id}`}
                     type="button"
-                    onMouseEnter={() =>
-                      setSelectedIndex(index)
-                    }
+                    onMouseEnter={() => {
+                      setSelectedIndex(index);
+                    }}
                     onClick={() => {
-                      onClose();
-                      setQuery("");
+                      handleClose();
                       router.push(item.href);
                     }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
@@ -500,6 +461,7 @@ export default function CommandPalette({
                         ? "bg-muted"
                         : "hover:bg-muted/70"
                     }`}
+                  
                   >
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background">
                       <Icon className="size-4 text-muted-foreground" />
@@ -526,9 +488,7 @@ export default function CommandPalette({
         </div>
 
         <div className="flex items-center justify-between border-t px-4 py-2.5 text-[11px] text-muted-foreground">
-          <span>
-            SprintFlow Global Search
-          </span>
+          <span>SprintFlow Global Search</span>
 
           <span className="hidden sm:inline">
             Press Ctrl K anytime

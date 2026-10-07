@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
+
 import {
   Activity,
   AlertTriangle,
@@ -23,12 +25,14 @@ type AnalyticsData = {
     projectId: string | null;
     sprintId: string | null;
   };
+
   projects: {
     id: string;
     name: string;
     key: string;
     status: string;
   }[];
+
   sprints: {
     id: string;
     projectId: string;
@@ -37,6 +41,7 @@ type AnalyticsData = {
     startDate: string | null;
     endDate: string | null;
   }[];
+
   summary: {
     totalTasks: number;
     completedTasks: number;
@@ -51,6 +56,7 @@ type AnalyticsData = {
     averageCycleTimeHours: number;
     averageLeadTimeHours: number;
   };
+
   velocity: {
     sprintId: string;
     name: string;
@@ -61,6 +67,7 @@ type AnalyticsData = {
     totalTasks: number;
     completionRate: number;
   }[];
+
   burndown: {
     sprintId: string;
     name: string;
@@ -70,6 +77,7 @@ type AnalyticsData = {
       idealRemaining: number;
     }[];
   }[];
+
   workload: {
     userId: string;
     name: string;
@@ -77,12 +85,14 @@ type AnalyticsData = {
     openTasks: number;
     storyPoints: number;
   }[];
+
   carryover: {
     sprintId: string;
     name: string;
     carryoverTasks: number;
     carryoverPoints: number;
   }[];
+
   statusDistribution: {
     status: string;
     count: number;
@@ -236,23 +246,21 @@ function BurndownChart({
   const height = 280;
   const padding = 32;
 
-  const points = data.map(
-    (item, index) => {
-      const x =
-        padding +
-        (index /
-          Math.max(1, data.length - 1)) *
-          (width - padding * 2);
+  const points = data.map((item, index) => {
+    const x =
+      padding +
+      (index /
+        Math.max(1, data.length - 1)) *
+        (width - padding * 2);
 
-      const y =
-        height -
-        padding -
-        (item.remainingPoints / max) *
-          (height - padding * 2);
+    const y =
+      height -
+      padding -
+      (item.remainingPoints / max) *
+        (height - padding * 2);
 
-      return `${x},${y}`;
-    },
-  );
+    return `${x},${y}`;
+  });
 
   const idealPoints = data.map(
     (item, index) => {
@@ -344,6 +352,7 @@ function BurndownChart({
 
       <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
         <span>{data[0]?.date}</span>
+
         <span>
           {data[data.length - 1]?.date}
         </span>
@@ -368,59 +377,69 @@ export default function AnalyticsDashboard() {
   const [error, setError] =
     useState("");
 
-  async function loadAnalytics() {
-    try {
-      setLoading(true);
-      setError("");
+  const loadAnalytics = useCallback(
+    async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const params =
-        new URLSearchParams();
+        const params =
+          new URLSearchParams();
 
-      if (projectId) {
-        params.set(
-          "projectId",
-          projectId,
+        if (projectId) {
+          params.set(
+            "projectId",
+            projectId,
+          );
+        }
+
+        if (sprintId) {
+          params.set(
+            "sprintId",
+            sprintId,
+          );
+        }
+
+        const response = await fetch(
+          `/api/analytics?${params.toString()}`,
+          {
+            cache: "no-store",
+          },
         );
-      }
 
-      if (sprintId) {
-        params.set(
-          "sprintId",
-          sprintId,
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ??
+              "Unable to load analytics.",
+          );
+        }
+
+        setData(result);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load analytics.",
         );
+      } finally {
+        setLoading(false);
       }
-
-      const response = await fetch(
-        `/api/analytics?${params.toString()}`,
-        {
-          cache: "no-store",
-        },
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Unable to load analytics.",
-        );
-      }
-
-      setData(result);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load analytics.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [projectId, sprintId],
+  );
 
   useEffect(() => {
-    void loadAnalytics();
-  }, [projectId, sprintId]);
+    const timer = window.setTimeout(() => {
+      void loadAnalytics();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loadAnalytics]);
 
   const filteredSprints =
     useMemo(() => {
@@ -434,30 +453,23 @@ export default function AnalyticsDashboard() {
 
       return data.sprints.filter(
         (sprint) =>
-          sprint.projectId ===
-          projectId,
+          sprint.projectId === projectId,
       );
     }, [data, projectId]);
 
-  const velocityMax =
-    Math.max(
-      ...(
-        data?.velocity ?? []
-      ).map(
-        (item) => item.plannedPoints,
-      ),
-      1,
-    );
+  const velocityMax = Math.max(
+    ...(data?.velocity ?? []).map(
+      (item) => item.plannedPoints,
+    ),
+    1,
+  );
 
-  const workloadMax =
-    Math.max(
-      ...(
-        data?.workload ?? []
-      ).map(
-        (item) => item.openTasks,
-      ),
-      1,
-    );
+  const workloadMax = Math.max(
+    ...(data?.workload ?? []).map(
+      (item) => item.openTasks,
+    ),
+    1,
+  );
 
   if (loading && !data) {
     return (
@@ -484,7 +496,9 @@ export default function AnalyticsDashboard() {
 
           <button
             type="button"
-            onClick={() => void loadAnalytics()}
+            onClick={() =>
+              void loadAnalytics()
+            }
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             <RefreshCw className="size-4" />
@@ -512,7 +526,9 @@ export default function AnalyticsDashboard() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Real-time project and sprint metrics calculated directly from your workspace data.
+            Real-time project and sprint metrics
+            calculated directly from your
+            workspace data.
           </p>
         </div>
 
@@ -672,7 +688,8 @@ export default function AnalyticsDashboard() {
             </div>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Planned versus completed story points.
+              Planned versus completed story
+              points.
             </p>
           </div>
 
@@ -697,24 +714,23 @@ export default function AnalyticsDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Current distribution across the selected scope.
+              Current distribution across
+              the selected scope.
             </p>
           </div>
 
           <SimpleBarChart
             values={data.statusDistribution.map(
               (item) => ({
-                label:
-                  formatStatus(
-                    item.status,
-                  ),
+                label: formatStatus(
+                  item.status,
+                ),
                 value: item.count,
               }),
             )}
             max={Math.max(
               ...data.statusDistribution.map(
-                (item) =>
-                  item.count,
+                (item) => item.count,
               ),
               1,
             )}
@@ -728,7 +744,9 @@ export default function AnalyticsDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Actual remaining story points compared with the ideal trajectory.
+              Actual remaining story points
+              compared with the ideal
+              trajectory.
             </p>
           </div>
 
@@ -767,7 +785,8 @@ export default function AnalyticsDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Open assigned work by team member.
+              Open assigned work by team
+              member.
             </p>
           </div>
 
@@ -783,7 +802,8 @@ export default function AnalyticsDashboard() {
             max={workloadMax}
           />
 
-          {data.workload.length === 0 && (
+          {data.workload.length ===
+            0 && (
             <p className="mt-4 text-center text-sm text-muted-foreground">
               No open assigned work.
             </p>
@@ -797,7 +817,8 @@ export default function AnalyticsDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Work remaining at the end of each sprint.
+              Work remaining at the end of
+              each sprint.
             </p>
           </div>
 
@@ -821,7 +842,8 @@ export default function AnalyticsDashboard() {
                     </p>
 
                     <p className="text-xs text-muted-foreground">
-                      {item.carryoverTasks} tasks
+                      {item.carryoverTasks}{" "}
+                      tasks
                     </p>
                   </div>
 
