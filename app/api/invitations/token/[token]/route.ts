@@ -10,19 +10,14 @@ type RouteContext = {
 };
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: RouteContext,
 ) {
-  void request;
-
   try {
-    const { token } =
-      await context.params;
+    const { token } = await context.params;
 
     const invitation =
-      await invitationService.getInvitationByToken(
-        token,
-      );
+      await invitationService.getByToken(token);
 
     return NextResponse.json({
       invitation: {
@@ -30,28 +25,56 @@ export async function GET(
         email: invitation.email,
         role: invitation.role,
         status: invitation.status,
-        expiresAt:
-          invitation.expiresAt,
-        organization:
-          invitation.organization,
+        expiresAt: invitation.expiresAt,
+        organization: invitation.organization,
         inviter: invitation.inviter,
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to load invitation.";
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_NOT_FOUND"
+    ) {
+      return NextResponse.json(
+        { error: "Invitation not found." },
+        { status: 404 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_EXPIRED"
+    ) {
+      return NextResponse.json(
+        { error: "This invitation has expired." },
+        { status: 410 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_NOT_PENDING"
+    ) {
+      return NextResponse.json(
+        { error: "This invitation is no longer active." },
+        { status: 409 },
+      );
+    }
+
+    console.error(
+      "GET /api/invitations/token/[token] failed:",
+      error,
+    );
 
     return NextResponse.json(
-      { error: message },
-      { status: 404 },
+      { error: "Failed to load invitation." },
+      { status: 500 },
     );
   }
 }
 
 export async function POST(
-  request: Request,
+  _request: Request,
   context: RouteContext,
 ) {
   try {
@@ -59,62 +82,75 @@ export async function POST(
 
     if (!session?.user?.id) {
       return NextResponse.json(
-        {
-          error:
-            "You must be signed in to accept this invitation.",
-        },
+        { error: "You must sign in before accepting an invitation." },
         { status: 401 },
       );
     }
 
-    if (!session.user.email) {
+    const { token } = await context.params;
+
+    const invitation =
+      await invitationService.accept(
+        token,
+        session.user.id,
+      );
+
+    return NextResponse.json({
+      invitation,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_NOT_FOUND"
+    ) {
       return NextResponse.json(
-        {
-          error:
-            "Your account does not have a verified email address.",
-        },
-        { status: 400 },
+        { error: "Invitation not found." },
+        { status: 404 },
       );
     }
 
-    const { token } =
-      await context.params;
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_EXPIRED"
+    ) {
+      return NextResponse.json(
+        { error: "This invitation has expired." },
+        { status: 410 },
+      );
+    }
 
-    const result =
-      await invitationService.acceptInvitation({
-        token,
-        userId: session.user.id,
-        userEmail: session.user.email,
-      });
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_NOT_PENDING"
+    ) {
+      return NextResponse.json(
+        { error: "This invitation is no longer active." },
+        { status: 409 },
+      );
+    }
 
-    return NextResponse.json({
-      message: result.alreadyMember
-        ? "You are already a member of this workspace."
-        : "Invitation accepted successfully.",
-      organizationId:
-        result.organizationId,
-      alreadyMember:
-        result.alreadyMember,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to accept invitation.";
+    if (
+      error instanceof Error &&
+      error.message ===
+        "INVITATION_EMAIL_MISMATCH"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The signed-in account does not match the invited email address.",
+        },
+        { status: 403 },
+      );
+    }
 
-    const status =
-      message.includes("different email") ||
-      message.includes("expired") ||
-      message.includes("ACCEPTED") ||
-      message.includes("REVOKED")
-        ? 409
-        : message.includes("not found")
-          ? 404
-          : 500;
+    console.error(
+      "POST /api/invitations/token/[token] failed:",
+      error,
+    );
 
     return NextResponse.json(
-      { error: message },
-      { status },
+      { error: "Failed to accept invitation." },
+      { status: 500 },
     );
   }
 }

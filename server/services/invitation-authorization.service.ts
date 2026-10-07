@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { invitationRepository } from "@/server/repositories/invitation.repository";
 
 type OrganizationRole =
   | "OWNER"
@@ -6,118 +6,47 @@ type OrganizationRole =
   | "MEMBER"
   | "VIEWER";
 
-function canManageInvitations(
-  role: OrganizationRole,
-) {
-  return role === "OWNER" || role === "ADMIN";
-}
-
-function canInviteRole(
-  actorRole: OrganizationRole,
-  invitedRole: OrganizationRole,
-) {
-  if (actorRole === "OWNER") {
-    return true;
-  }
-
-  if (actorRole === "ADMIN") {
-    return (
-      invitedRole === "MEMBER" ||
-      invitedRole === "VIEWER"
-    );
-  }
-
-  return false;
-}
+const MANAGEMENT_ROLES: OrganizationRole[] = [
+  "OWNER",
+  "ADMIN",
+];
 
 export const invitationAuthorizationService = {
-  async getMembership(
+  async canManage(
     organizationId: string,
     userId: string,
   ) {
-    return prisma.organizationMember.findUnique({
-      where: {
-        organizationId_userId: {
-          organizationId,
-          userId,
-        },
-      },
-      select: {
-        id: true,
-        role: true,
-      },
-    });
+    const member =
+      await invitationRepository.findOrganizationMember(
+        organizationId,
+        userId,
+      );
+
+    if (!member) {
+      return false;
+    }
+
+    return MANAGEMENT_ROLES.includes(member.role);
   },
 
   async authorizeManage(
     organizationId: string,
     userId: string,
   ) {
-    const membership =
-      await this.getMembership(
+    const member =
+      await invitationRepository.findOrganizationMember(
         organizationId,
         userId,
       );
 
-    if (
-      !membership ||
-      !canManageInvitations(
-        membership.role,
-      )
-    ) {
-      throw new Error(
-        "You are not authorized to manage workspace invitations.",
-      );
+    if (!member) {
+      throw new Error("WORKSPACE_MEMBERSHIP_REQUIRED");
     }
 
-    return membership;
-  },
-
-  async authorizeInviteRole(
-    organizationId: string,
-    userId: string,
-    invitedRole: OrganizationRole,
-  ) {
-    const membership =
-      await this.authorizeManage(
-        organizationId,
-        userId,
-      );
-
-    if (
-      !canInviteRole(
-        membership.role,
-        invitedRole,
-      )
-    ) {
-      throw new Error(
-        "Your workspace role cannot invite users with this role.",
-      );
+    if (!MANAGEMENT_ROLES.includes(member.role)) {
+      throw new Error("INVITATION_MANAGEMENT_FORBIDDEN");
     }
 
-    return membership;
-  },
-
-  async authorizeRevoke(
-    organizationId: string,
-    userId: string,
-    invitationRole: OrganizationRole,
-  ) {
-    const membership =
-      await this.authorizeManage(
-        organizationId,
-        userId,
-      );
-
-    if (
-      membership.role === "ADMIN" &&
-      invitationRole === "OWNER"
-    ) {
-      throw new Error(
-        "Administrators cannot revoke owner invitations.",
-      );
-    }
-
-    return membership;
+    return member;
   },
 };

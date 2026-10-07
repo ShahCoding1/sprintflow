@@ -1,34 +1,19 @@
 "use client";
 
-import {
-  CheckCircle2,
-  Clock3,
-  Loader2,
-  ShieldCheck,
-  UserPlus,
-  XCircle,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
 type Invitation = {
   id: string;
   email: string;
-  role:
-    | "OWNER"
-    | "ADMIN"
-    | "MEMBER"
-    | "VIEWER";
-  status:
-    | "PENDING"
-    | "ACCEPTED"
-    | "REVOKED"
-    | "EXPIRED";
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  status: string;
   expiresAt: string;
   organization: {
     id: string;
     name: string;
+    slug: string;
   };
   inviter: {
     id: string;
@@ -37,99 +22,89 @@ type Invitation = {
   };
 };
 
-export default function InvitationPage() {
-  const params = useParams();
-  const router = useRouter();
+function formatRole(role: Invitation["role"]) {
+  return role.charAt(0) + role.slice(1).toLowerCase();
+}
 
-  const token = String(params.token);
+export default function InvitationPage() {
+  const params = useParams<{ token: string }>();
+  const router = useRouter();
 
   const [invitation, setInvitation] =
     useState<Invitation | null>(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState("");
 
-  const [accepting, setAccepting] =
-    useState(false);
+  const loadInvitation = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const [error, setError] =
-    useState("");
+      const response = await fetch(
+        `/api/invitations/token/${encodeURIComponent(params.token)}`,
+        {
+          cache: "no-store",
+        },
+      );
 
-  const [accepted, setAccepted] =
-    useState(false);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ?? "Unable to load invitation.",
+        );
+      }
+
+      setInvitation(data.invitation);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load invitation.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [params.token]);
 
   useEffect(() => {
-    async function loadInvitation() {
-      try {
-        const response = await fetch(
-          `/api/invitations/token/${token}`,
-          {
-            cache: "no-store",
-          },
-        );
+    const timer = window.setTimeout(() => {
+      void loadInvitation();
+    }, 0);
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Invitation not found.",
-          );
-        }
-
-        setInvitation(
-          result.invitation,
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load invitation.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void loadInvitation();
-  }, [token]);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loadInvitation]);
 
   async function acceptInvitation() {
-    setAccepting(true);
-    setError("");
-
     try {
+      setAccepting(true);
+      setError("");
+
       const response = await fetch(
-        `/api/invitations/token/${token}`,
+        `/api/invitations/token/${encodeURIComponent(params.token)}`,
         {
           method: "POST",
         },
       );
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(
-            "You must sign in with the invited email address before accepting this invitation.",
-          );
-        }
-
         throw new Error(
-          result.error ??
-            "Unable to accept invitation.",
+          data.error ?? "Unable to accept invitation.",
         );
       }
 
-      setAccepted(true);
-
-      window.setTimeout(() => {
-        router.push("/dashboard");
-      }, 1200);
-    } catch (err) {
+      router.push("/dashboard");
+      router.refresh();
+    } catch (acceptError) {
       setError(
-        err instanceof Error
-          ? err.message
+        acceptError instanceof Error
+          ? acceptError.message
           : "Unable to accept invitation.",
       );
     } finally {
@@ -139,169 +114,119 @@ export default function InvitationPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+          <h1 className="text-lg font-semibold">
+            Loading invitation
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Please wait while we validate your invitation.
+          </p>
+        </div>
       </main>
     );
   }
 
-  if (error && !invitation) {
+  if (error || !invitation) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-        <section className="w-full max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm sm:p-8">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10">
-            <XCircle className="size-6 text-destructive" />
-          </div>
-
-          <h1 className="mt-5 text-xl font-semibold">
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-sm">
+          <h1 className="text-xl font-semibold">
             Invitation unavailable
           </h1>
 
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {error}
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {error || "This invitation could not be loaded."}
           </p>
 
           <Link
-            href="/"
-            className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+            href="/login"
+            className="mt-6 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Go to SprintFlow
+            Go to login
           </Link>
-        </section>
+        </div>
       </main>
     );
   }
-
-  if (!invitation) {
-    return null;
-  }
-
-  if (accepted) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-        <section className="w-full max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm sm:p-8">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-500/10">
-            <CheckCircle2 className="size-6 text-emerald-600" />
-          </div>
-
-          <h1 className="mt-5 text-xl font-semibold">
-            Invitation accepted
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground">
-            You have joined{" "}
-            <strong>
-              {invitation.organization.name}
-            </strong>
-            .
-          </p>
-
-          <p className="mt-4 text-xs text-muted-foreground">
-            Redirecting to your dashboard…
-          </p>
-        </section>
-      </main>
-    );
-  }
-
-  const expired =
-    invitation.status === "EXPIRED";
-
-  const unavailable =
-    invitation.status !== "PENDING";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <section className="w-full max-w-lg rounded-2xl border bg-card shadow-sm">
-        <div className="p-6 text-center sm:p-8">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10">
-            <UserPlus className="size-7 text-primary" />
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+        <p className="text-sm font-medium text-primary">
+          SprintFlow workspace invitation
+        </p>
+
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          Join {invitation.organization.name}
+        </h1>
+
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          {invitation.inviter.name ||
+            invitation.inviter.email}{" "}
+          invited you to join this workspace.
+        </p>
+
+        <div className="mt-6 grid gap-3 rounded-xl border bg-muted/30 p-4 text-sm">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground">
+              Invited email
+            </span>
+
+            <span className="break-all font-medium">
+              {invitation.email}
+            </span>
           </div>
 
-          <p className="mt-5 text-sm text-muted-foreground">
-            You have been invited to join
-          </p>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground">
+              Workspace role
+            </span>
 
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {invitation.organization.name}
-          </h1>
+            <span className="font-medium">
+              {formatRole(invitation.role)}
+            </span>
+          </div>
 
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            {invitation.inviter.name ??
-              invitation.inviter.email}{" "}
-            invited{" "}
-            <strong>
-              {invitation.email}
-            </strong>{" "}
-            as a{" "}
-            <strong>
-              {invitation.role.toLowerCase()}
-            </strong>
-            .
-          </p>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground">
+              Expires
+            </span>
 
-          <div className="mt-6 rounded-xl border bg-muted/30 p-4 text-left">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
-
-              <div>
-                <p className="text-sm font-medium">
-                  Workspace access
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  This invitation only grants the
-                  workspace role shown above. You must
-                  accept it while signed in with the
-                  invited email address.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock3 className="size-4" />
-
-              Expires{" "}
+            <span className="font-medium">
               {new Date(
                 invitation.expiresAt,
               ).toLocaleDateString()}
-            </div>
+            </span>
           </div>
-
-          {error && (
-            <div
-              role="alert"
-              className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-left text-sm text-destructive"
-            >
-              {error}
-            </div>
-          )}
-
-          {expired || unavailable ? (
-            <div className="mt-6 rounded-xl bg-muted p-4 text-sm text-muted-foreground">
-              This invitation is no longer
-              available.
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() =>
-                void acceptInvitation()
-              }
-              disabled={accepting}
-              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-            >
-              {accepting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="size-4" />
-              )}
-
-              Accept invitation
-            </button>
-          )}
         </div>
-      </section>
+
+        {error && (
+          <div
+            role="alert"
+            className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={acceptInvitation}
+          disabled={accepting}
+          className="mt-6 flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {accepting
+            ? "Joining workspace..."
+            : "Accept invitation"}
+        </button>
+
+        <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">
+          You must be signed in with the invited email address
+          to accept this invitation.
+        </p>
+      </div>
     </main>
   );
 }

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { invitationAuthorizationService } from "@/server/services/invitation-authorization.service";
 import { invitationService } from "@/server/services/invitation.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -11,11 +12,9 @@ type RouteContext = {
 };
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   context: RouteContext,
 ) {
-  void request;
-
   try {
     const session = await auth();
 
@@ -31,43 +30,67 @@ export async function DELETE(
 
     if (!workspace) {
       return NextResponse.json(
-        { error: "Workspace not found." },
+        { error: "Workspace context is required." },
+        { status: 400 },
+      );
+    }
+
+    await invitationAuthorizationService.authorizeManage(
+      workspace.id,
+      session.user.id,
+    );
+
+    const { invitationId } = await context.params;
+
+    const result =
+      await invitationService.revoke(
+        invitationId,
+        workspace.id,
+      );
+
+    return NextResponse.json({
+      invitation: result,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_NOT_FOUND"
+    ) {
+      return NextResponse.json(
+        { error: "Invitation not found." },
         { status: 404 },
       );
     }
 
-    const { invitationId } =
-      await context.params;
+    if (
+      error instanceof Error &&
+      error.message === "INVITATION_NOT_PENDING"
+    ) {
+      return NextResponse.json(
+        { error: "Only pending invitations can be revoked." },
+        { status: 409 },
+      );
+    }
 
-    const invitation =
-      await invitationService.revokeInvitation({
-        organizationId: workspace.id,
-        userId: session.user.id,
-        invitationId,
-      });
+    if (
+      error instanceof Error &&
+      error.message ===
+        "INVITATION_MANAGEMENT_FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        { error: "You cannot manage invitations." },
+        { status: 403 },
+      );
+    }
 
-    return NextResponse.json({
-      invitation,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to revoke invitation.";
-
-    const status =
-      message.includes("not found")
-        ? 404
-        : message.includes("not authorized") ||
-            message.includes("cannot revoke")
-          ? 403
-          : message.includes("Only pending")
-            ? 409
-            : 500;
+    console.error(
+      "DELETE /api/invitations/[invitationId] failed:",
+      error,
+    );
 
     return NextResponse.json(
-      { error: message },
-      { status },
+      { error: "Failed to revoke invitation." },
+      { status: 500 },
     );
   }
 }

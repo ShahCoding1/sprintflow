@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { createInvitationSchema } from "@/features/invitation/schemas/invitation.schema";
+import { invitationAuthorizationService } from "@/server/services/invitation-authorization.service";
 import { invitationService } from "@/server/services/invitation.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -21,41 +22,57 @@ export async function GET() {
 
     if (!workspace) {
       return NextResponse.json(
-        { error: "Workspace not found." },
-        { status: 404 },
+        { error: "Workspace context is required." },
+        { status: 400 },
       );
     }
 
+    await invitationAuthorizationService.authorizeManage(
+      workspace.id,
+      session.user.id,
+    );
+
     const invitations =
-      await invitationService.getInvitations({
-        organizationId: workspace.id,
-        userId: session.user.id,
-      });
+      await invitationService.list(
+        workspace.id,
+      );
 
     return NextResponse.json({
       invitations,
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to load invitations.";
+    if (
+      error instanceof Error &&
+      error.message ===
+        "INVITATION_MANAGEMENT_FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        { error: "You cannot manage invitations." },
+        { status: 403 },
+      );
+    }
 
-    const status =
-      message.includes("not authorized")
-        ? 403
-        : 500;
+    if (
+      error instanceof Error &&
+      error.message ===
+        "WORKSPACE_MEMBERSHIP_REQUIRED"
+    ) {
+      return NextResponse.json(
+        { error: "Workspace membership is required." },
+        { status: 403 },
+      );
+    }
+
+    console.error("GET /api/invitations failed:", error);
 
     return NextResponse.json(
-      { error: message },
-      { status },
+      { error: "Failed to load invitations." },
+      { status: 500 },
     );
   }
 }
 
-export async function POST(
-  request: Request,
-) {
+export async function POST(request: Request) {
   try {
     const session = await auth();
 
@@ -71,10 +88,15 @@ export async function POST(
 
     if (!workspace) {
       return NextResponse.json(
-        { error: "Workspace not found." },
-        { status: 404 },
+        { error: "Workspace context is required." },
+        { status: 400 },
       );
     }
+
+    await invitationAuthorizationService.authorizeManage(
+      workspace.id,
+      session.user.id,
+    );
 
     const body = await request.json();
 
@@ -92,48 +114,56 @@ export async function POST(
       );
     }
 
-    const result =
-      await invitationService.createInvitation({
+    const invitation =
+      await invitationService.create({
         organizationId: workspace.id,
         inviterId: session.user.id,
         email: parsed.data.email,
         role: parsed.data.role,
       });
 
-    const origin =
-      new URL(request.url).origin;
-
     return NextResponse.json(
-      {
-        invitation: result.invitation,
-        inviteUrl:
-          `${origin}/invitations/${result.token}`,
-      },
+      { invitation },
       { status: 201 },
     );
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to create invitation.";
-
-    let status = 500;
-
     if (
-      message.includes("not authorized") ||
-      message.includes("cannot invite")
+      error instanceof Error &&
+      error.message === "USER_ALREADY_MEMBER"
     ) {
-      status = 403;
-    } else if (
-      message.includes("already a workspace member") ||
-      message.includes("pending invitation")
-    ) {
-      status = 409;
+      return NextResponse.json(
+        { error: "This user is already a workspace member." },
+        { status: 409 },
+      );
     }
 
+    if (
+      error instanceof Error &&
+      error.message ===
+        "INVITATION_ALREADY_PENDING"
+    ) {
+      return NextResponse.json(
+        { error: "A pending invitation already exists for this email." },
+        { status: 409 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "INVITATION_MANAGEMENT_FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        { error: "You cannot manage invitations." },
+        { status: 403 },
+      );
+    }
+
+    console.error("POST /api/invitations failed:", error);
+
     return NextResponse.json(
-      { error: message },
-      { status },
+      { error: "Failed to create invitation." },
+      { status: 500 },
     );
   }
 }

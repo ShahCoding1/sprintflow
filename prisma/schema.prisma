@@ -1,4 +1,4 @@
-﻿generator client {
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -535,23 +535,3 @@ model ActivityLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
-
-model Comment {
-  id        String   @id @default(uuid())
-  taskId    String
-  authorId  String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([taskId])
-  @@index([authorId])
-  @@index([createdAt])
-}
-
-
-
-
