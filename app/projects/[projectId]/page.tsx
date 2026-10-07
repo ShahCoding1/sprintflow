@@ -4,6 +4,7 @@ import ProjectDetail from "@/components/projects/ProjectDetail";
 import SprintList from "@/components/sprints/SprintList";
 import TaskBoard from "@/components/tasks/TaskBoard";
 import { projectService } from "@/server/services/project.service";
+import { projectSummaryService } from "@/server/services/project-summary.service";
 import { sprintService } from "@/server/services/sprint.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -35,11 +36,18 @@ export default async function ProjectPage({
     notFound();
   }
 
-  const sprints =
-    await sprintService.getSprints({
-      projectId: project.id,
-      organizationId: workspace.id,
-    });
+  const [sprints, summary] =
+    await Promise.all([
+      sprintService.getSprints({
+        projectId: project.id,
+        organizationId: workspace.id,
+      }),
+
+      projectSummaryService.getProjectSummary({
+        projectId: project.id,
+        organizationId: workspace.id,
+      }),
+    ]);
 
   const initialSprints =
     sprints.map((sprint) => ({
@@ -64,7 +72,10 @@ export default async function ProjectPage({
 
   return (
     <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">
-      <ProjectDetail project={project} />
+      <ProjectDetail
+        project={project}
+        summary={summary}
+      />
 
       <div className="mt-8">
         <SprintList

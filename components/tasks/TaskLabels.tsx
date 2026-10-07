@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  Check,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Tags,
-  X,
-} from "lucide-react";
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { Check, ChevronDown, Loader2, Plus, X } from "lucide-react";
 
 type TaskLabel = {
   id: string;
@@ -22,19 +13,19 @@ type TaskLabelsProps = {
   projectId: string;
   taskId: string;
   initialLabels?: TaskLabel[];
-  compact?: boolean;
 };
 
-type LabelsResponse = {
-  labels?: TaskLabel[];
-  error?: string;
-};
+type AvailableLabelsResponse =
+  | TaskLabel[]
+  | {
+      labels?: TaskLabel[];
+      error?: string;
+    };
 
 export default function TaskLabels({
   projectId,
   taskId,
   initialLabels = [],
-  compact = false,
 }: TaskLabelsProps) {
   const [labels, setLabels] =
     useState<TaskLabel[]>(initialLabels);
@@ -42,60 +33,76 @@ export default function TaskLabels({
   const [availableLabels, setAvailableLabels] =
     useState<TaskLabel[]>([]);
 
-  const [loading, setLoading] =
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [isOpen, setIsOpen] =
     useState(false);
 
-  const [savingLabelId, setSavingLabelId] =
+  const [isUpdating, setIsUpdating] =
     useState<string | null>(null);
 
   const [error, setError] =
     useState<string | null>(null);
 
-  const [selectorOpen, setSelectorOpen] =
-    useState(false);
+  useEffect(() => {
+    let cancelled = false;
 
-  const loadLabels = async () => {
-    setLoading(true);
-    setError(null);
+    async function loadLabels() {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      const response = await fetch(
-        `/api/projects/${projectId}/tasks/${taskId}/labels`,
-        {
-          cache: "no-store",
-        },
-      );
-
-      const result =
-        (await response.json()) as LabelsResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Unable to load task labels.",
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/tasks/${taskId}/labels`,
+          {
+            cache: "no-store",
+          },
         );
+
+        const result =
+          (await response.json()) as
+            | TaskLabel[]
+            | { labels?: TaskLabel[]; error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            !Array.isArray(result) && result.error
+              ? result.error
+              : "Unable to load task labels.",
+          );
+        }
+
+        const taskLabels = Array.isArray(result)
+          ? result
+          : result.labels ?? [];
+
+        if (!cancelled) {
+          setLabels(taskLabels);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load task labels.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
-
-      setLabels(result.labels ?? []);
-    } catch (error) {
-      console.error(
-        "Load task labels error:",
-        error,
-      );
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load task labels.",
-      );
-    } finally {
-      setLoading(false);
     }
-  };
 
-  const loadAvailableLabels = async () => {
-    setError(null);
+    void loadLabels();
 
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, taskId]);
+
+  async function loadAvailableLabels() {
     try {
       const response = await fetch(
         "/api/labels",
@@ -105,44 +112,49 @@ export default function TaskLabels({
       );
 
       const result =
-        (await response.json()) as LabelsResponse;
+        (await response.json()) as AvailableLabelsResponse;
 
       if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Unable to load labels.",
+          !Array.isArray(result) && result.error
+            ? result.error
+            : "Unable to load labels.",
         );
       }
 
-      setAvailableLabels(
-        result.labels ?? [],
-      );
-    } catch (error) {
-      console.error(
-        "Load available labels error:",
-        error,
-      );
+      const nextLabels = Array.isArray(result)
+        ? result
+        : result.labels ?? [];
 
+      setAvailableLabels(nextLabels);
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Unable to load labels.",
       );
     }
-  };
+  }
 
-  const openSelector = async () => {
-    setSelectorOpen(true);
-    await Promise.all([
-      loadLabels(),
-      loadAvailableLabels(),
-    ]);
-  };
+  async function handleOpen() {
+    setIsOpen((current) => !current);
 
-  const addLabel = async (
-    label: TaskLabel,
-  ) => {
-    setSavingLabelId(label.id);
+    if (!isOpen) {
+      await loadAvailableLabels();
+    }
+  }
+
+  async function handleAssign(label: TaskLabel) {
+    if (
+      labels.some(
+        (existingLabel) =>
+          existingLabel.id === label.id,
+      )
+    ) {
+      return;
+    }
+
+    setIsUpdating(label.id);
     setError(null);
 
     try {
@@ -160,68 +172,62 @@ export default function TaskLabels({
       );
 
       const result =
-        (await response.json()) as TaskLabel & {
+        (await response.json()) as {
+          label?: TaskLabel;
           error?: string;
+          message?: string;
         };
 
       if (!response.ok) {
         throw new Error(
           result.error ??
+            result.message ??
             "Unable to assign label.",
         );
       }
 
-      setLabels((current) =>
-        [...current, result].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        ),
-      );
-    } catch (error) {
-      console.error(
-        "Assign task label error:",
-        error,
-      );
+      const assignedLabel =
+        result.label ?? label;
 
+      setLabels((current) => [
+        ...current,
+        assignedLabel,
+      ]);
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Unable to assign label.",
       );
     } finally {
-      setSavingLabelId(null);
+      setIsUpdating(null);
     }
-  };
+  }
 
-  const removeLabel = async (
-    labelId: string,
-  ) => {
-    setSavingLabelId(labelId);
+  async function handleRemove(labelId: string) {
+    setIsUpdating(labelId);
     setError(null);
 
     try {
       const response = await fetch(
-        `/api/projects/${projectId}/tasks/${taskId}/labels`,
+        `/api/projects/${projectId}/tasks/${taskId}/labels?labelId=${encodeURIComponent(
+          labelId,
+        )}`,
         {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            labelId,
-          }),
         },
       );
 
       const result =
-        (await response.json().catch(
-          () => ({}),
-        )) as {
+        (await response.json()) as {
           error?: string;
+          message?: string;
         };
 
       if (!response.ok) {
         throw new Error(
           result.error ??
+            result.message ??
             "Unable to remove label.",
         );
       }
@@ -231,295 +237,173 @@ export default function TaskLabels({
           (label) => label.id !== labelId,
         ),
       );
-    } catch (error) {
-      console.error(
-        "Remove task label error:",
-        error,
-      );
-
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Unable to remove label.",
       );
     } finally {
-      setSavingLabelId(null);
+      setIsUpdating(null);
     }
-  };
+  }
 
   const assignedIds = new Set(
     labels.map((label) => label.id),
   );
 
-  const unassignedLabels =
+  const selectableLabels =
     availableLabels.filter(
       (label) => !assignedIds.has(label.id),
     );
 
   return (
     <section
-      className={
-        compact
-          ? "space-y-2"
-          : "rounded-2xl border bg-card p-5 sm:p-6"
-      }
-      aria-labelledby={`task-labels-${taskId}`}
+      aria-label="Task labels"
+      className="rounded-xl border bg-card p-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Tags className="size-4 shrink-0 text-muted-foreground" />
-
-          <h2
-            id={`task-labels-${taskId}`}
-            className={
-              compact
-                ? "text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                : "text-base font-semibold"
-            }
-          >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">
             Labels
           </h2>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Organize this task with project labels.
+          </p>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button
+        <div className="relative">
+          <button
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={loadLabels}
-            disabled={loading}
-            aria-label="Refresh task labels"
-            title="Refresh labels"
+            onClick={() => void handleOpen()}
+            disabled={isLoading}
+            aria-expanded={isOpen}
+            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw
-              className={[
-                "size-4",
-                loading
-                  ? "animate-spin"
-                  : "",
-              ].join(" ")}
-            />
-          </Button>
+            {isLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={openSelector}
-            disabled={loading}
-          >
-            <Plus className="mr-1.5 size-4" />
-            Add label
-          </Button>
+            Add Label
+
+            <ChevronDown
+              className={`size-4 transition-transform ${
+                isOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {isOpen && (
+            <div className="absolute right-0 z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-2 shadow-lg">
+              {selectableLabels.length === 0 ? (
+                <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                  {availableLabels.length === 0
+                    ? "No labels available. Create labels in Settings → Labels."
+                    : "All available labels are already assigned."}
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto">
+                  {selectableLabels.map(
+                    (label) => (
+                      <button
+                        key={label.id}
+                        type="button"
+                        onClick={() =>
+                          void handleAssign(label)
+                        }
+                        disabled={
+                          isUpdating === label.id
+                        }
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="size-3 shrink-0 rounded-full"
+                          style={{
+                            backgroundColor:
+                              label.color,
+                          }}
+                        />
+
+                        <span className="min-w-0 flex-1 truncate">
+                          {label.name}
+                        </span>
+
+                        {isUpdating ===
+                          label.id && (
+                          <Loader2 className="size-4 animate-spin" />
+                        )}
+                      </button>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
         >
           {error}
         </div>
       )}
 
-      {labels.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {labels.map((label) => (
-            <span
+      <div className="mt-4 flex min-h-10 flex-wrap items-center gap-2">
+        {labels.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No labels assigned.
+          </p>
+        ) : (
+          labels.map((label) => (
+            <div
               key={label.id}
-              className="inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium"
-              style={{
-                borderColor: `${label.color}55`,
-                backgroundColor: `${label.color}15`,
-                color: label.color,
-              }}
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm"
             >
               <span
-                className="size-2 shrink-0 rounded-full"
-                style={{
-                  backgroundColor:
-                    label.color,
-                }}
                 aria-hidden="true"
+                className="size-2.5 rounded-full"
+                style={{
+                  backgroundColor: label.color,
+                }}
               />
 
-              <span className="truncate">
+              <span className="max-w-48 truncate">
                 {label.name}
               </span>
 
               <button
                 type="button"
                 onClick={() =>
-                  removeLabel(label.id)
+                  void handleRemove(label.id)
                 }
                 disabled={
-                  savingLabelId === label.id
+                  isUpdating === label.id
                 }
-                className="ml-0.5 rounded-full p-0.5 transition hover:bg-black/10 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={`Remove ${label.name} label`}
+                className="rounded-full p-0.5 transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {savingLabelId === label.id ? (
-                  <Loader2 className="size-3 animate-spin" />
+                {isUpdating === label.id ? (
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <X className="size-3" />
+                  <X className="size-3.5" />
                 )}
               </button>
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed px-4 py-5 text-center">
-          <Tags className="mx-auto size-6 text-muted-foreground/50" />
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            No labels assigned.
-          </p>
-        </div>
-      )}
-
-      {selectorOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              setSelectorOpen(false);
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`label-selector-${taskId}`}
-            className="max-h-[80vh] w-full max-w-md overflow-hidden rounded-2xl border bg-background shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <div>
-                <h3
-                  id={`label-selector-${taskId}`}
-                  className="font-semibold"
-                >
-                  Manage Task Labels
-                </h3>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Assign or remove workspace labels.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectorOpen(false)
-                }
-                className="rounded-md p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                aria-label="Close label selector"
-              >
-                <X className="size-4" />
-              </button>
+              <Check
+                aria-hidden="true"
+                className="hidden size-3.5 text-muted-foreground sm:block"
+              />
             </div>
-
-            <div className="max-h-[60vh] overflow-y-auto p-4">
-              {availableLabels.length === 0 ? (
-                <div className="rounded-xl border border-dashed px-4 py-8 text-center">
-                  <Tags className="mx-auto size-7 text-muted-foreground/50" />
-
-                  <p className="mt-2 text-sm font-medium">
-                    No workspace labels
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Create labels from Settings → Labels.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {availableLabels.map(
-                    (label) => {
-                      const assigned =
-                        assignedIds.has(
-                          label.id,
-                        );
-
-                      const saving =
-                        savingLabelId ===
-                        label.id;
-
-                      return (
-                        <button
-                          key={label.id}
-                          type="button"
-                          onClick={() => {
-                            if (assigned) {
-                              void removeLabel(
-                                label.id,
-                              );
-                            } else {
-                              void addLabel(
-                                label,
-                              );
-                            }
-                          }}
-                          disabled={saving}
-                          className="flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <span className="flex min-w-0 items-center gap-3">
-                            <span
-                              className="size-3 shrink-0 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  label.color,
-                              }}
-                              aria-hidden="true"
-                            />
-
-                            <span className="truncate text-sm font-medium">
-                              {label.name}
-                            </span>
-                          </span>
-
-                          {saving ? (
-                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                          ) : assigned ? (
-                            <Check className="size-4 text-primary" />
-                          ) : (
-                            <Plus className="size-4 text-muted-foreground" />
-                          )}
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-              )}
-
-              {unassignedLabels.length ===
-                0 &&
-                availableLabels.length > 0 && (
-                  <p className="mt-3 text-center text-xs text-muted-foreground">
-                    All available labels are assigned.
-                  </p>
-                )}
-            </div>
-
-            <div className="flex justify-end border-t px-5 py-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setSelectorOpen(false)
-                }
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </section>
   );
 }

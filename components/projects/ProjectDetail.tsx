@@ -33,30 +33,50 @@ type Project = {
   updatedAt: Date | string;
 };
 
-type ProjectDetailProps = {
-  project: Project;
+type ProjectSummary = {
+  taskCount: number;
+  memberCount: number;
+  sprintCount: number;
 };
 
-function formatDate(date: Date | string | null) {
+type ProjectDetailProps = {
+  project: Project;
+  summary: ProjectSummary;
+};
+
+function formatDate(
+  date: Date | string | null,
+) {
   if (!date) {
     return "Not set";
   }
 
   const parsedDate =
-    date instanceof Date ? date : new Date(date);
+    date instanceof Date
+      ? date
+      : new Date(date);
 
-  if (Number.isNaN(parsedDate.getTime())) {
+  if (
+    Number.isNaN(
+      parsedDate.getTime(),
+    )
+  ) {
     return "Not set";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(parsedDate);
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+  ).format(parsedDate);
 }
 
-function getStatusLabel(status: ProjectStatus) {
+function getStatusLabel(
+  status: ProjectStatus,
+) {
   switch (status) {
     case "PLANNING":
       return "Planning";
@@ -75,7 +95,9 @@ function getStatusLabel(status: ProjectStatus) {
   }
 }
 
-function getStatusClasses(status: ProjectStatus) {
+function getStatusClasses(
+  status: ProjectStatus,
+) {
   switch (status) {
     case "ACTIVE":
       return "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400";
@@ -94,17 +116,25 @@ function getStatusClasses(status: ProjectStatus) {
 
 export default function ProjectDetail({
   project: initialProject,
+  summary,
 }: ProjectDetailProps) {
   const [project, setProject] =
-    useState<Project>(initialProject);
+    useState<Project>(
+      initialProject,
+    );
 
-  const [editDialogOpen, setEditDialogOpen] =
-    useState(false);
+  const [
+    editDialogOpen,
+    setEditDialogOpen,
+  ] = useState(false);
 
-  const statusLabel = getStatusLabel(project.status);
-  const statusClasses = getStatusClasses(
-    project.status,
-  );
+  const statusLabel =
+    getStatusLabel(project.status);
+
+  const statusClasses =
+    getStatusClasses(
+      project.status,
+    );
 
   function handleProjectUpdated(
     updatedProject: Project,
@@ -192,21 +222,27 @@ export default function ProjectDetail({
           <ProjectStat
             icon={ListTodo}
             label="Tasks"
-            value="0"
+            value={String(
+              summary.taskCount,
+            )}
             description="Tasks in this project"
           />
 
           <ProjectStat
             icon={Users}
             label="Members"
-            value="0"
+            value={String(
+              summary.memberCount,
+            )}
             description="Project members"
           />
 
           <ProjectStat
             icon={CheckCircle2}
             label="Sprints"
-            value="0"
+            value={String(
+              summary.sprintCount,
+            )}
             description="Project sprints"
           />
 
@@ -244,28 +280,38 @@ export default function ProjectDetail({
 
             <ProjectInformation
               label="Start date"
-              value={formatDate(project.startDate)}
+              value={formatDate(
+                project.startDate,
+              )}
             />
 
             <ProjectInformation
               label="End date"
-              value={formatDate(project.endDate)}
+              value={formatDate(
+                project.endDate,
+              )}
             />
 
             <ProjectInformation
               label="Created"
-              value={formatDate(project.createdAt)}
+              value={formatDate(
+                project.createdAt,
+              )}
             />
 
             <ProjectInformation
               label="Last updated"
-              value={formatDate(project.updatedAt)}
+              value={formatDate(
+                project.updatedAt,
+              )}
             />
           </div>
         </section>
 
         {/* Project Members */}
-        <ProjectMembers projectId={project.id} />
+        <ProjectMembers
+          projectId={project.id}
+        />
 
         {/* Coming Next */}
         <section className="rounded-2xl border border-dashed bg-muted/20 p-6 sm:p-8">
@@ -279,9 +325,10 @@ export default function ProjectDetail({
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Tasks, sprints, team members, backlog,
-              activity, and project analytics will appear
-              here as we build the project workspace.
+              Tasks, sprints, team members,
+              backlog, activity, and project
+              analytics will appear here as we
+              build the project workspace.
             </p>
           </div>
         </section>
@@ -290,8 +337,12 @@ export default function ProjectDetail({
       <EditProjectDialog
         open={editDialogOpen}
         project={project}
-        onOpenChange={setEditDialogOpen}
-        onUpdated={handleProjectUpdated}
+        onOpenChange={
+          setEditDialogOpen
+        }
+        onUpdated={
+          handleProjectUpdated
+        }
       />
     </>
   );

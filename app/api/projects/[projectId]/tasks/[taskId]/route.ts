@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { updateTaskSchema } from "@/features/task/schemas/update-task.schema";
-import { taskAuthorizationService } from "@/server/services/task-authorization.service";
-import { taskService } from "@/server/services/task.service";
+import { auth } from "@/auth";
+
+import { taskDeletionAuthorizationService } from "@/server/services/task-deletion-authorization.service";
+import { taskDeletionService } from "@/server/services/task-deletion.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
 type RouteContext = {
@@ -12,15 +13,23 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(
+export async function DELETE(
   _request: Request,
-  context: RouteContext,
+  { params }: RouteContext,
 ) {
   try {
-    const {
-      projectId,
-      taskId,
-    } = await context.params;
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          message: "Unauthorized.",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
 
     const workspace =
       await workspaceContextService.getWorkspaceContext();
@@ -28,152 +37,77 @@ export async function GET(
     if (!workspace) {
       return NextResponse.json(
         {
-          success: false,
-          message: "Unauthorized.",
+          message: "Workspace not found.",
         },
-        { status: 401 },
+        {
+          status: 404,
+        },
       );
     }
 
-    const tasks =
-      await taskService.getTasks({
-        projectId,
+    const {
+      projectId,
+      taskId,
+    } = await params;
+
+    const authorized =
+      await taskDeletionAuthorizationService.authorize({
+        userId: session.user.id,
         organizationId: workspace.id,
+        projectId,
+        taskId,
       });
 
-    const task = tasks.find(
-      (item) => item.id === taskId,
-    );
-
-    if (!task) {
+    if (!authorized) {
       return NextResponse.json(
         {
-          success: false,
-          message: "Task not found.",
+          message:
+            "You do not have permission to delete this task.",
         },
-        { status: 404 },
+        {
+          status: 403,
+        },
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      task,
-    });
-  } catch (error) {
-    console.error("Get task error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to load task.",
-      },
-      { status: 500 },
-    );
-  }
-}
-
-export async function PATCH(
-  request: Request,
-  context: RouteContext,
-) {
-  try {
-    const {
-      projectId,
-      taskId,
-    } = await context.params;
-
-    const workspace =
-      await workspaceContextService.getWorkspaceContext();
-
-    if (!workspace) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized.",
-        },
-        { status: 401 },
-      );
-    }
-
-    await taskAuthorizationService.authorize({
-      organizationId: workspace.id,
-      projectId,
-      userId: workspace.userId,
-      action: "UPDATE",
-    });
-
-    const body = await request.json();
-
-    const parsed =
-      updateTaskSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Invalid task data.",
-          errors: parsed.error.flatten(),
-        },
-        { status: 400 },
-      );
-    }
-
-    const task =
-      await taskService.updateTask({
+    const deleted =
+      await taskDeletionService.deleteTask({
         taskId,
         projectId,
         organizationId: workspace.id,
-        ...parsed.data,
       });
 
     return NextResponse.json({
-      success: true,
-      task,
+      message: "Task deleted successfully.",
+      task: deleted,
     });
   } catch (error) {
-    console.error("Update task error:", error);
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to update task.";
+    console.error(
+      "DELETE task error:",
+      error,
+    );
 
     if (
-      message.includes("permission") ||
-      message.includes("member") ||
-      message.includes("workspace")
+      error instanceof Error &&
+      error.message === "Task not found."
     ) {
       return NextResponse.json(
         {
-          success: false,
-          message,
+          message: error.message,
         },
-        { status: 403 },
-      );
-    }
-
-    if (
-      message.includes("not found") ||
-      message.includes("Not found")
-    ) {
-      return NextResponse.json(
         {
-          success: false,
-          message,
+          status: 404,
         },
-        { status: 404 },
       );
     }
 
     return NextResponse.json(
       {
-        success: false,
-        message,
+        message: "Unable to delete task.",
       },
-      { status: 400 },
+      {
+        status: 500,
+      },
     );
   }
 }
