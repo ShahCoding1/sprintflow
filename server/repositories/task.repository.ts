@@ -7,6 +7,12 @@ const taskUserSelect = {
   image: true,
 };
 
+const taskLabelSelect = {
+  id: true,
+  name: true,
+  color: true,
+};
+
 const taskInclude = {
   assignee: {
     select: taskUserSelect,
@@ -15,6 +21,18 @@ const taskInclude = {
     select: taskUserSelect,
   },
   sprint: true,
+  labels: {
+    select: {
+      label: {
+        select: taskLabelSelect,
+      },
+    },
+    orderBy: {
+      label: {
+        name: "asc" as const,
+      },
+    },
+  },
 };
 
 export const taskRepository = {

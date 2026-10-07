@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Bug,
   CheckCircle2,
@@ -11,7 +12,20 @@ import {
   Zap,
 } from "lucide-react";
 
+import type {
+  DraggableAttributes,
+} from "@dnd-kit/core";
+
+import type {
+  SyntheticListenerMap,
+} from "@dnd-kit/core/dist/hooks/utilities";
+
+import type {
+  TaskLabelAssignmentSummary,
+} from "@/features/task/types/task-label.types";
+
 import EditTaskDialog from "./EditTaskDialog";
+import TaskLabelBadges from "./TaskLabelBadges";
 
 export type TaskStatus =
   | "TODO"
@@ -45,12 +59,15 @@ export type BoardTask = {
   position: number;
   sprintId?: string | null;
   parentId?: string | null;
+
   assignee: {
     id: string;
     name: string | null;
     email: string;
     image: string | null;
   } | null;
+
+  labels?: TaskLabelAssignmentSummary[];
 };
 
 type TaskCardProps = {
@@ -58,8 +75,8 @@ type TaskCardProps = {
   task: BoardTask;
   onUpdated: (task: BoardTask) => void;
   dragHandleProps?: {
-    attributes?: Record<string, unknown>;
-    listeners?: Record<string, unknown>;
+    attributes: DraggableAttributes;
+    listeners: SyntheticListenerMap | undefined;
   };
 };
 
@@ -72,7 +89,8 @@ const priorityConfig: Record<
 > = {
   LOW: {
     label: "Low",
-    className: "bg-muted text-muted-foreground",
+    className:
+      "bg-muted text-muted-foreground",
   },
   MEDIUM: {
     label: "Medium",
@@ -113,7 +131,8 @@ export default function TaskCard({
   dragHandleProps,
 }: TaskCardProps) {
   const TypeIcon = typeIcons[task.type];
-  const priority = priorityConfig[task.priority];
+  const priority =
+    priorityConfig[task.priority];
 
   const assigneeInitial = (
     task.assignee?.name ??
@@ -122,6 +141,11 @@ export default function TaskCard({
   )
     .charAt(0)
     .toUpperCase();
+
+  const labelSummaries =
+    task.labels?.map(
+      (assignment) => assignment.label,
+    ) ?? [];
 
   return (
     <article className="group rounded-xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -141,9 +165,14 @@ export default function TaskCard({
 
           <TypeIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5">
-            {task.title}
-          </h3>
+          <Link
+            href={`/projects/${projectId}/tasks/${task.id}`}
+            className="min-w-0 flex-1"
+          >
+            <h3 className="line-clamp-2 text-sm font-semibold leading-5 transition hover:text-primary">
+              {task.title}
+            </h3>
+          </Link>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -164,9 +193,14 @@ export default function TaskCard({
       </div>
 
       {task.description && (
-        <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-          {task.description}
-        </p>
+        <Link
+          href={`/projects/${projectId}/tasks/${task.id}`}
+          className="block"
+        >
+          <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground transition hover:text-foreground">
+            {task.description}
+          </p>
+        </Link>
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -183,6 +217,14 @@ export default function TaskCard({
         )}
       </div>
 
+      {labelSummaries.length > 0 && (
+        <div className="mt-3">
+          <TaskLabelBadges
+            labels={labelSummaries}
+          />
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
         {task.assignee ? (
           <div className="flex min-w-0 items-center gap-2">
@@ -190,7 +232,10 @@ export default function TaskCard({
               {task.assignee.image ? (
                 <Image
                   src={task.assignee.image}
-                  alt={task.assignee.name ?? "Assignee"}
+                  alt={
+                    task.assignee.name ??
+                    "Assignee"
+                  }
                   width={28}
                   height={28}
                   className="size-full object-cover"
@@ -202,7 +247,8 @@ export default function TaskCard({
             </div>
 
             <span className="truncate text-xs text-muted-foreground">
-              {task.assignee.name ?? task.assignee.email}
+              {task.assignee.name ??
+                task.assignee.email}
             </span>
           </div>
         ) : (
