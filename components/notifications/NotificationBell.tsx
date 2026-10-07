@@ -42,7 +42,9 @@ function formatNotificationTime(
   const date = new Date(createdAt);
   const now = new Date();
 
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs =
+    now.getTime() - date.getTime();
+
   const diffMinutes = Math.floor(
     diffMs / 60000,
   );
@@ -162,6 +164,7 @@ export default function NotificationBell() {
         setNotifications(
           result.notifications,
         );
+
         setUnreadCount(
           result.unreadCount ?? 0,
         );
@@ -178,16 +181,29 @@ export default function NotificationBell() {
   }
 
   useEffect(() => {
-    void loadNotifications();
+    let cancelled = false;
+
+    async function initializeNotifications() {
+      if (cancelled) {
+        return;
+      }
+
+      await loadNotifications();
+    }
+
+    void initializeNotifications();
 
     const interval = window.setInterval(
       () => {
-        void loadNotifications();
+        if (!cancelled) {
+          void loadNotifications();
+        }
       },
       30000,
     );
 
     return () => {
+      cancelled = true;
       window.clearInterval(interval);
     };
   }, []);

@@ -1,8 +1,14 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, Search } from "lucide-react";
+import {
+  Command,
+  LogOut,
+  Search,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
+import CommandPalette from "@/components/search/CommandPalette";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 type CurrentUser = {
@@ -41,6 +47,9 @@ function getUserInitials(
 export function Header({
   user,
 }: HeaderProps) {
+  const [isSearchOpen, setIsSearchOpen] =
+    useState(false);
+
   const displayName =
     user?.name || "User";
 
@@ -53,73 +62,119 @@ export function Header({
     user?.email ?? null,
   );
 
+  useEffect(() => {
+    function handleGlobalShortcut(
+      event: KeyboardEvent,
+    ) {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        setIsSearchOpen(true);
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleGlobalShortcut,
+    );
+
+    return () =>
+      window.removeEventListener(
+        "keydown",
+        handleGlobalShortcut,
+      );
+  }, []);
+
   return (
-    <header className="flex min-h-16 items-center justify-between border-b bg-background px-4 sm:px-6">
-      {/* Search */}
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="relative hidden w-80 md:block">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+    <>
+      <header className="flex min-h-16 items-center justify-between border-b bg-background px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() =>
+              setIsSearchOpen(true)
+            }
+            className="hidden h-10 w-80 items-center gap-3 rounded-lg border bg-muted/30 px-3 text-left text-sm text-muted-foreground transition hover:bg-muted md:flex"
+            aria-label="Open global search"
+          >
+            <Search className="size-4 shrink-0" />
 
-          <input
-            type="search"
-            placeholder="Search anything..."
-            className="h-10 w-full rounded-lg border bg-muted/30 pl-9 pr-20 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
+            <span className="min-w-0 flex-1 truncate">
+              Search anything...
+            </span>
 
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 rounded border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-            ⌘ K
-          </div>
-        </div>
-      </div>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded border bg-background px-2 py-0.5 text-[11px]">
+              <Command className="size-3" />
+              K
+            </span>
+          </button>
 
-      {/* Right Actions */}
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        {/* Notifications */}
-        <NotificationBell />
-
-        {/* User */}
-        <div className="hidden items-center gap-3 border-l pl-3 sm:flex">
-          <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-            {user?.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.image}
-                alt={displayName}
-                className="size-full object-cover"
-              />
-            ) : (
-              initials
-            )}
-          </div>
-
-          <div className="hidden max-w-48 leading-tight lg:block">
-            <p className="truncate text-sm font-medium">
-              {displayName}
-            </p>
-
-            <p className="truncate text-xs text-muted-foreground">
-              {displayEmail}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setIsSearchOpen(true)
+            }
+            className="inline-flex size-10 items-center justify-center rounded-lg border transition hover:bg-muted md:hidden"
+            aria-label="Open global search"
+          >
+            <Search className="size-4" />
+          </button>
         </div>
 
-        {/* Sign Out */}
-        <button
-          type="button"
-          onClick={() =>
-            signOut({
-              callbackUrl: "/login",
-            })
-          }
-          className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
-        >
-          <LogOut className="size-4" />
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <NotificationBell />
 
-          <span className="hidden sm:inline">
-            Sign out
-          </span>
-        </button>
-      </div>
-    </header>
+          <div className="hidden items-center gap-3 border-l pl-3 sm:flex">
+            <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              {user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.image}
+                  alt={displayName}
+                  className="size-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </div>
+
+            <div className="hidden max-w-48 leading-tight lg:block">
+              <p className="truncate text-sm font-medium">
+                {displayName}
+              </p>
+
+              <p className="truncate text-xs text-muted-foreground">
+                {displayEmail}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              signOut({
+                callbackUrl: "/login",
+              })
+            }
+            className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
+          >
+            <LogOut className="size-4" />
+
+            <span className="hidden sm:inline">
+              Sign out
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <CommandPalette
+        open={isSearchOpen}
+        onClose={() =>
+          setIsSearchOpen(false)
+        }
+      />
+    </>
   );
 }
