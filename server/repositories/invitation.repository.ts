@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 
+type InvitationRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+
 export const invitationRepository = {
   findById(invitationId: string, organizationId: string) {
     return prisma.invitation.findFirst({
@@ -18,13 +20,6 @@ export const invitationRepository = {
         expiresAt: true,
         createdAt: true,
         updatedAt: true,
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
         inviter: {
           select: {
             id: true,
@@ -38,9 +33,7 @@ export const invitationRepository = {
 
   findByToken(token: string) {
     return prisma.invitation.findUnique({
-      where: {
-        token,
-      },
+      where: { token },
       select: {
         id: true,
         organizationId: true,
@@ -70,18 +63,12 @@ export const invitationRepository = {
     });
   },
 
-  findPendingByEmail(
-    organizationId: string,
-    email: string,
-  ) {
+  findPendingByEmail(organizationId: string, email: string) {
     return prisma.invitation.findFirst({
       where: {
         organizationId,
-        email,
+        email: email.toLowerCase(),
         status: "PENDING",
-      },
-      orderBy: {
-        createdAt: "desc",
       },
       select: {
         id: true,
@@ -90,8 +77,6 @@ export const invitationRepository = {
         role: true,
         status: true,
         expiresAt: true,
-        createdAt: true,
-        updatedAt: true,
       },
     });
   },
@@ -138,6 +123,8 @@ export const invitationRepository = {
       },
       select: {
         id: true,
+        organizationId: true,
+        userId: true,
         role: true,
       },
     });
@@ -146,7 +133,7 @@ export const invitationRepository = {
   findUserByEmail(email: string) {
     return prisma.user.findUnique({
       where: {
-        email,
+        email: email.toLowerCase(),
       },
       select: {
         id: true,
@@ -160,7 +147,7 @@ export const invitationRepository = {
     organizationId: string;
     inviterId: string;
     email: string;
-    role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+    role: InvitationRole;
     token: string;
     expiresAt: Date;
   }) {
@@ -168,10 +155,11 @@ export const invitationRepository = {
       data: {
         organizationId: data.organizationId,
         inviterId: data.inviterId,
-        email: data.email,
+        email: data.email.toLowerCase(),
         role: data.role,
         token: data.token,
         expiresAt: data.expiresAt,
+        status: "PENDING",
       },
       select: {
         id: true,
@@ -180,50 +168,84 @@ export const invitationRepository = {
         email: true,
         role: true,
         status: true,
+        token: true,
         expiresAt: true,
         createdAt: true,
         updatedAt: true,
-        token: true,
       },
     });
   },
 
-  revoke(
+  async revoke(
     invitationId: string,
     organizationId: string,
   ) {
-    return prisma.invitation.updateMany({
+    const invitation = await prisma.invitation.findFirst({
       where: {
         id: invitationId,
         organizationId,
-        status: "PENDING",
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!invitation) {
+      throw new Error("INVITATION_NOT_FOUND");
+    }
+
+    if (invitation.status !== "PENDING") {
+      throw new Error("INVITATION_NOT_PENDING");
+    }
+
+    return prisma.invitation.update({
+      where: {
+        id: invitation.id,
       },
       data: {
         status: "REVOKED",
       },
+      select: {
+        id: true,
+        organizationId: true,
+        email: true,
+        role: true,
+        status: true,
+        expiresAt: true,
+        updatedAt: true,
+      },
     });
   },
 
-  markExpired(invitationId: string) {
-    return prisma.invitation.updateMany({
+  async markExpired(invitationId: string) {
+    return prisma.invitation.update({
       where: {
         id: invitationId,
-        status: "PENDING",
       },
       data: {
         status: "EXPIRED",
       },
+      select: {
+        id: true,
+        status: true,
+      },
     });
   },
 
-  accept(
-    invitationId: string,
-    userId: string,
-  ) {
+  async accept(invitationId: string, userId: string) {
     return prisma.$transaction(async (tx) => {
       const invitation = await tx.invitation.findUnique({
         where: {
           id: invitationId,
+        },
+        select: {
+          id: true,
+          organizationId: true,
+          email: true,
+          role: true,
+          status: true,
+          expiresAt: true,
         },
       });
 
@@ -263,8 +285,8 @@ export const invitationRepository = {
       }
 
       if (
-        user.email.trim().toLowerCase() !==
-        invitation.email.trim().toLowerCase()
+        user.email.toLowerCase() !==
+        invitation.email.toLowerCase()
       ) {
         throw new Error("INVITATION_EMAIL_MISMATCH");
       }
@@ -274,50 +296,43 @@ export const invitationRepository = {
           where: {
             organizationId_userId: {
               organizationId: invitation.organizationId,
-              userId,
+              userId: user.id,
             },
+          },
+          select: {
+            id: true,
           },
         });
 
       if (existingMember) {
-        if (existingMember.role !== invitation.role) {
-          await tx.organizationMember.update({
-            where: {
-              id: existingMember.id,
-            },
-            data: {
-              role: invitation.role,
-            },
-          });
-        }
-      } else {
+        throw new Error("USER_ALREADY_MEMBER");
+      }
+
+      const member =
         await tx.organizationMember.create({
           data: {
             organizationId: invitation.organizationId,
-            userId,
+            userId: user.id,
             role: invitation.role,
           },
+          select: {
+            id: true,
+            organizationId: true,
+            userId: true,
+            role: true,
+          },
         });
-      }
 
-      const accepted = await tx.invitation.update({
+      await tx.invitation.update({
         where: {
           id: invitation.id,
         },
         data: {
           status: "ACCEPTED",
         },
-        select: {
-          id: true,
-          organizationId: true,
-          email: true,
-          role: true,
-          status: true,
-          expiresAt: true,
-        },
       });
 
-      return accepted;
+      return member;
     });
   },
 };

@@ -1,7 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { invitationAuthorizationService } from "@/server/services/invitation-authorization.service";
 import { invitationService } from "@/server/services/invitation.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -12,7 +11,7 @@ type RouteContext = {
 };
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: RouteContext,
 ) {
   try {
@@ -35,23 +34,48 @@ export async function DELETE(
       );
     }
 
-    await invitationAuthorizationService.authorizeManage(
-      workspace.id,
-      session.user.id,
-    );
-
     const { invitationId } = await context.params;
 
-    const result =
+    if (!invitationId) {
+      return NextResponse.json(
+        { error: "Invitation ID is required." },
+        { status: 400 },
+      );
+    }
+
+    const invitation =
       await invitationService.revoke(
-        invitationId,
         workspace.id,
+        session.user.id,
+        invitationId,
       );
 
     return NextResponse.json({
-      invitation: result,
+      invitation,
     });
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message ===
+        "WORKSPACE_MEMBERSHIP_REQUIRED"
+    ) {
+      return NextResponse.json(
+        { error: "Workspace membership is required." },
+        { status: 403 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message ===
+        "INVITATION_MANAGEMENT_FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        { error: "Invitation management is forbidden." },
+        { status: 403 },
+      );
+    }
+
     if (
       error instanceof Error &&
       error.message === "INVITATION_NOT_FOUND"
@@ -67,19 +91,11 @@ export async function DELETE(
       error.message === "INVITATION_NOT_PENDING"
     ) {
       return NextResponse.json(
-        { error: "Only pending invitations can be revoked." },
+        {
+          error:
+            "Only pending invitations can be revoked.",
+        },
         { status: 409 },
-      );
-    }
-
-    if (
-      error instanceof Error &&
-      error.message ===
-        "INVITATION_MANAGEMENT_FORBIDDEN"
-    ) {
-      return NextResponse.json(
-        { error: "You cannot manage invitations." },
-        { status: 403 },
       );
     }
 

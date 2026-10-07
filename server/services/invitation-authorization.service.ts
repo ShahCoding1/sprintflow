@@ -1,6 +1,6 @@
 import { invitationRepository } from "@/server/repositories/invitation.repository";
 
-type OrganizationRole =
+export type OrganizationRole =
   | "OWNER"
   | "ADMIN"
   | "MEMBER"
@@ -12,15 +12,11 @@ const MANAGEMENT_ROLES: OrganizationRole[] = [
 ];
 
 export const invitationAuthorizationService = {
-  async canManage(
-    organizationId: string,
-    userId: string,
-  ) {
-    const member =
-      await invitationRepository.findOrganizationMember(
-        organizationId,
-        userId,
-      );
+  async canManage(organizationId: string, userId: string) {
+    const member = await invitationRepository.findOrganizationMember(
+      organizationId,
+      userId,
+    );
 
     if (!member) {
       return false;
@@ -29,15 +25,11 @@ export const invitationAuthorizationService = {
     return MANAGEMENT_ROLES.includes(member.role);
   },
 
-  async authorizeManage(
-    organizationId: string,
-    userId: string,
-  ) {
-    const member =
-      await invitationRepository.findOrganizationMember(
-        organizationId,
-        userId,
-      );
+  async authorizeManage(organizationId: string, userId: string) {
+    const member = await invitationRepository.findOrganizationMember(
+      organizationId,
+      userId,
+    );
 
     if (!member) {
       throw new Error("WORKSPACE_MEMBERSHIP_REQUIRED");
@@ -48,5 +40,29 @@ export const invitationAuthorizationService = {
     }
 
     return member;
+  },
+
+  canAssignRole(
+    actorRole: OrganizationRole,
+    targetRole: OrganizationRole,
+  ) {
+    if (actorRole === "OWNER") {
+      return true;
+    }
+
+    if (actorRole === "ADMIN") {
+      return targetRole !== "OWNER";
+    }
+
+    return false;
+  },
+
+  authorizeRoleAssignment(
+    actorRole: OrganizationRole,
+    targetRole: OrganizationRole,
+  ) {
+    if (!this.canAssignRole(actorRole, targetRole)) {
+      throw new Error("INVITATION_ROLE_ASSIGNMENT_FORBIDDEN");
+    }
   },
 };

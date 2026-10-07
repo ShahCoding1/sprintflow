@@ -1,26 +1,9 @@
 import { randomBytes } from "node:crypto";
 
 import { invitationRepository } from "@/server/repositories/invitation.repository";
+import { invitationAuthorizationService } from "@/server/services/invitation-authorization.service";
 
 const INVITATION_EXPIRY_DAYS = 7;
-
-function createToken() {
-  return randomBytes(32).toString("hex");
-}
-
-function getExpiryDate() {
-  const expiry = new Date();
-
-  expiry.setDate(
-    expiry.getDate() + INVITATION_EXPIRY_DAYS,
-  );
-
-  return expiry;
-}
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
 
 export const invitationService = {
   async list(organizationId: string) {
@@ -31,27 +14,33 @@ export const invitationService = {
 
     const now = new Date();
 
-    const results = await Promise.all(
-      invitations.map(async (invitation) => {
-        if (
-          invitation.status === "PENDING" &&
-          invitation.expiresAt <= now
-        ) {
-          await invitationRepository.markExpired(
+    await Promise.all(
+      invitations
+        .filter(
+          (invitation) =>
+            invitation.status === "PENDING" &&
+            invitation.expiresAt <= now,
+        )
+        .map((invitation) =>
+          invitationRepository.markExpired(
             invitation.id,
-          );
-
-          return {
-            ...invitation,
-            status: "EXPIRED" as const,
-          };
-        }
-
-        return invitation;
-      }),
+          ),
+        ),
     );
 
-    return results;
+    return invitations.map((invitation) => {
+      if (
+        invitation.status === "PENDING" &&
+        invitation.expiresAt <= now
+      ) {
+        return {
+          ...invitation,
+          status: "EXPIRED" as const,
+        };
+      }
+
+      return invitation;
+    });
   },
 
   async getByToken(token: string) {
@@ -80,119 +69,96 @@ export const invitationService = {
     return invitation;
   },
 
-  async create(data: {
-    organizationId: string;
-    inviterId: string;
-    email: string;
-    role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
-  }) {
-    const email = normalizeEmail(data.email);
+  async create(
+    organizationId: string,
+    inviterId: string,
+    input: {
+      email: string;
+      role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+    },
+  ) {
+    const inviter =
+      await invitationAuthorizationService.authorizeManage(
+        organizationId,
+        inviterId,
+      );
+
+    invitationAuthorizationService.authorizeRoleAssignment(
+      inviter.role,
+      input.role,
+    );
+
+    const email = input.email.trim().toLowerCase();
 
     const existingUser =
-      await invitationRepository.findUserByEmail(email);
+      await invitationRepository.findUserByEmail(
+        email,
+      );
 
     if (existingUser) {
-      const existingMember =
+      const existingMembership =
         await invitationRepository.findOrganizationMember(
-          data.organizationId,
+          organizationId,
           existingUser.id,
         );
 
-      if (existingMember) {
+      if (existingMembership) {
         throw new Error("USER_ALREADY_MEMBER");
       }
     }
 
     const existingInvitation =
       await invitationRepository.findPendingByEmail(
-        data.organizationId,
+        organizationId,
         email,
       );
 
     if (existingInvitation) {
-      if (
-        existingInvitation.expiresAt <= new Date()
-      ) {
-        await invitationRepository.markExpired(
-          existingInvitation.id,
-        );
-      } else {
-        throw new Error("INVITATION_ALREADY_PENDING");
-      }
+      throw new Error(
+        "INVITATION_ALREADY_PENDING",
+      );
     }
 
-    const invitation =
-      await invitationRepository.create({
-        organizationId: data.organizationId,
-        inviterId: data.inviterId,
-        email,
-        role: data.role,
-        token: createToken(),
-        expiresAt: getExpiryDate(),
-      });
+    const token = randomBytes(32).toString("hex");
 
-    return invitation;
+    const expiresAt = new Date();
+
+    expiresAt.setDate(
+      expiresAt.getDate() + INVITATION_EXPIRY_DAYS,
+    );
+
+    return invitationRepository.create({
+      organizationId,
+      inviterId,
+      email,
+      role: input.role,
+      token,
+      expiresAt,
+    });
   },
 
   async revoke(
-    invitationId: string,
     organizationId: string,
+    userId: string,
+    invitationId: string,
   ) {
-    const invitation =
-      await invitationRepository.findById(
-        invitationId,
-        organizationId,
-      );
+    await invitationAuthorizationService.authorizeManage(
+      organizationId,
+      userId,
+    );
 
-    if (!invitation) {
-      throw new Error("INVITATION_NOT_FOUND");
-    }
-
-    if (invitation.status !== "PENDING") {
-      throw new Error("INVITATION_NOT_PENDING");
-    }
-
-    const result =
-      await invitationRepository.revoke(
-        invitationId,
-        organizationId,
-      );
-
-    if (result.count !== 1) {
-      throw new Error("INVITATION_REVOKE_FAILED");
-    }
-
-    return {
-      id: invitationId,
-      status: "REVOKED" as const,
-    };
+    return invitationRepository.revoke(
+      invitationId,
+      organizationId,
+    );
   },
 
   async accept(
-    token: string,
+    invitationId: string,
     userId: string,
   ) {
-    const invitation =
-      await invitationRepository.findByToken(token);
-
-    if (!invitation) {
-      throw new Error("INVITATION_NOT_FOUND");
-    }
-
-    if (invitation.status !== "PENDING") {
-      throw new Error("INVITATION_NOT_PENDING");
-    }
-
-    if (invitation.expiresAt <= new Date()) {
-      await invitationRepository.markExpired(
-        invitation.id,
-      );
-
-      throw new Error("INVITATION_EXPIRED");
-    }
-
     return invitationRepository.accept(
-      invitation.id,
+      invitationId,
       userId,
     );
   },
