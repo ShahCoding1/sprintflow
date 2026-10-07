@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 
 import { createTaskSchema } from "@/features/task/schemas/create-task.schema";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
+import { taskAuthorizationService } from "@/server/services/task-authorization.service";
 import { taskService } from "@/server/services/task.service";
 
-type TaskRouteContext = {
+type RouteContext = {
   params: Promise<{
     projectId: string;
   }>;
@@ -12,20 +13,10 @@ type TaskRouteContext = {
 
 export async function GET(
   _request: Request,
-  { params }: TaskRouteContext,
+  context: RouteContext,
 ) {
   try {
-    const { projectId } = await params;
-
-    if (!projectId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Project ID is required.",
-        },
-        { status: 400 },
-      );
-    }
+    const { projectId } = await context.params;
 
     const workspace =
       await workspaceContextService.getWorkspaceContext();
@@ -34,44 +25,32 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message: "Workspace context is required.",
+          message: "Unauthorized.",
         },
         { status: 401 },
       );
     }
 
-    const tasks = await taskService.getTasks({
-      projectId,
-      organizationId: workspace.id,
-    });
+    const tasks =
+      await taskService.getTasks({
+        projectId,
+        organizationId: workspace.id,
+      });
 
     return NextResponse.json({
       success: true,
       tasks,
     });
   } catch (error) {
-    console.error(
-      "Get project tasks error:",
-      error,
-    );
-
-    if (
-      error instanceof Error &&
-      error.message === "Project not found."
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: error.message,
-        },
-        { status: 404 },
-      );
-    }
+    console.error("Get tasks error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to retrieve project tasks.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to load tasks.",
       },
       { status: 500 },
     );
@@ -80,20 +59,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: TaskRouteContext,
+  context: RouteContext,
 ) {
   try {
-    const { projectId } = await params;
-
-    if (!projectId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Project ID is required.",
-        },
-        { status: 400 },
-      );
-    }
+    const { projectId } = await context.params;
 
     const workspace =
       await workspaceContextService.getWorkspaceContext();
@@ -102,13 +71,20 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "Workspace context is required.",
+          message: "Unauthorized.",
         },
         { status: 401 },
       );
     }
 
-    const body: unknown = await request.json();
+    await taskAuthorizationService.authorize({
+      organizationId: workspace.id,
+      projectId,
+      userId: workspace.userId,
+      action: "CREATE",
+    });
+
+    const body = await request.json();
 
     const parsed =
       createTaskSchema.safeParse(body);
@@ -118,63 +94,59 @@ export async function POST(
         {
           success: false,
           message: "Invalid task data.",
-          errors:
-            parsed.error.flatten().fieldErrors,
+          errors: parsed.error.flatten(),
         },
         { status: 400 },
       );
     }
 
-    const task = await taskService.createTask({
-      projectId,
-      organizationId: workspace.id,
-      creatorId: workspace.userId,
-      title: parsed.data.title,
-      description: parsed.data.description,
-      type: parsed.data.type,
-      status: parsed.data.status,
-      priority: parsed.data.priority,
-      sprintId: parsed.data.sprintId,
-      parentId: parsed.data.parentId,
-      assigneeId: parsed.data.assigneeId,
-      storyPoints: parsed.data.storyPoints,
-      dueDate: parsed.data.dueDate,
-    });
+    const task =
+      await taskService.createTask({
+        projectId,
+        organizationId: workspace.id,
+        creatorId: workspace.userId,
+        ...parsed.data,
+      });
 
     return NextResponse.json(
       {
         success: true,
-        message: "Task created successfully.",
         task,
       },
       { status: 201 },
     );
   } catch (error) {
-    console.error(
-      "Create project task error:",
-      error,
-    );
+    console.error("Create task error:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to create task.";
 
     if (
-      error instanceof Error &&
-      (
-        error.message ===
-          "Project not found." ||
-        error.message.includes(
-          "does not belong to this project",
-        ) ||
-        error.message.includes(
-          "does not belong to this project",
-        ) ||
-        error.message.includes(
-          "not a project member",
-        )
-      )
+      message.includes("permission") ||
+      message.includes("member") ||
+      message.includes("workspace")
     ) {
       return NextResponse.json(
         {
           success: false,
-          message: error.message,
+          message,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (
+      message.includes("Project not found") ||
+      message.includes("Sprint not found") ||
+      message.includes("Parent task") ||
+      message.includes("Assignee")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message,
         },
         { status: 400 },
       );
@@ -183,7 +155,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to create the task.",
+        message,
       },
       { status: 500 },
     );

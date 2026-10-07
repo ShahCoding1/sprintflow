@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { moveTaskSchema } from "@/features/task/schemas/move-task.schema";
+import { taskAuthorizationService } from "@/server/services/task-authorization.service";
 import { taskService } from "@/server/services/task.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -13,10 +14,13 @@ type RouteContext = {
 
 export async function PATCH(
   request: Request,
-  { params }: RouteContext,
+  context: RouteContext,
 ) {
   try {
-    const { projectId, taskId } = await params;
+    const {
+      projectId,
+      taskId,
+    } = await context.params;
 
     const workspace =
       await workspaceContextService.getWorkspaceContext();
@@ -25,13 +29,20 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: "Workspace context is required.",
+          message: "Unauthorized.",
         },
         { status: 401 },
       );
     }
 
-    const body: unknown = await request.json();
+    await taskAuthorizationService.authorize({
+      organizationId: workspace.id,
+      projectId,
+      userId: workspace.userId,
+      action: "MOVE",
+    });
+
+    const body = await request.json();
 
     const parsed =
       moveTaskSchema.safeParse(body);
@@ -40,7 +51,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid task movement data.",
+          message: "Invalid movement data.",
           errors: parsed.error.flatten(),
         },
         { status: 400 },
@@ -69,8 +80,22 @@ export async function PATCH(
         : "Unable to move task.";
 
     if (
-      message === "Project not found." ||
-      message === "Task not found."
+      message.includes("permission") ||
+      message.includes("member") ||
+      message.includes("workspace")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (
+      message.includes("not found") ||
+      message.includes("Not found")
     ) {
       return NextResponse.json(
         {
@@ -86,7 +111,7 @@ export async function PATCH(
         success: false,
         message,
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }

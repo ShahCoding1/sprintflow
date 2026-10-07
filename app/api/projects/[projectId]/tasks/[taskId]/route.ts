@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { updateTaskSchema } from "@/features/task/schemas/update-task.schema";
+import { taskAuthorizationService } from "@/server/services/task-authorization.service";
 import { taskService } from "@/server/services/task.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
-type TaskRouteContext = {
+type RouteContext = {
   params: Promise<{
     projectId: string;
     taskId: string;
@@ -13,22 +14,13 @@ type TaskRouteContext = {
 
 export async function GET(
   _request: Request,
-  { params }: TaskRouteContext,
+  context: RouteContext,
 ) {
   try {
-    const { projectId, taskId } =
-      await params;
-
-    if (!projectId || !taskId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Project ID and task ID are required.",
-        },
-        { status: 400 },
-      );
-    }
+    const {
+      projectId,
+      taskId,
+    } = await context.params;
 
     const workspace =
       await workspaceContextService.getWorkspaceContext();
@@ -37,17 +29,17 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Workspace context is required.",
+          message: "Unauthorized.",
         },
         { status: 401 },
       );
     }
 
-    const tasks = await taskService.getTasks({
-      projectId,
-      organizationId: workspace.id,
-    });
+    const tasks =
+      await taskService.getTasks({
+        projectId,
+        organizationId: workspace.id,
+      });
 
     const task = tasks.find(
       (item) => item.id === taskId,
@@ -68,16 +60,15 @@ export async function GET(
       task,
     });
   } catch (error) {
-    console.error(
-      "Get task error:",
-      error,
-    );
+    console.error("Get task error:", error);
 
     return NextResponse.json(
       {
         success: false,
         message:
-          "Unable to retrieve the task.",
+          error instanceof Error
+            ? error.message
+            : "Unable to load task.",
       },
       { status: 500 },
     );
@@ -86,22 +77,13 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: TaskRouteContext,
+  context: RouteContext,
 ) {
   try {
-    const { projectId, taskId } =
-      await params;
-
-    if (!projectId || !taskId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Project ID and task ID are required.",
-        },
-        { status: 400 },
-      );
-    }
+    const {
+      projectId,
+      taskId,
+    } = await context.params;
 
     const workspace =
       await workspaceContextService.getWorkspaceContext();
@@ -110,15 +92,20 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Workspace context is required.",
+          message: "Unauthorized.",
         },
         { status: 401 },
       );
     }
 
-    const body: unknown =
-      await request.json();
+    await taskAuthorizationService.authorize({
+      organizationId: workspace.id,
+      projectId,
+      userId: workspace.userId,
+      action: "UPDATE",
+    });
+
+    const body = await request.json();
 
     const parsed =
       updateTaskSchema.safeParse(body);
@@ -128,9 +115,7 @@ export async function PATCH(
         {
           success: false,
           message: "Invalid task data.",
-          errors:
-            parsed.error.flatten()
-              .fieldErrors,
+          errors: parsed.error.flatten(),
         },
         { status: 400 },
       );
@@ -141,79 +126,54 @@ export async function PATCH(
         taskId,
         projectId,
         organizationId: workspace.id,
-        title: parsed.data.title,
-        description:
-          parsed.data.description,
-        type: parsed.data.type,
-        status: parsed.data.status,
-        priority: parsed.data.priority,
-        sprintId: parsed.data.sprintId,
-        parentId: parsed.data.parentId,
-        assigneeId: parsed.data.assigneeId,
-        storyPoints:
-          parsed.data.storyPoints,
-        dueDate: parsed.data.dueDate,
-        position: parsed.data.position,
+        ...parsed.data,
       });
 
     return NextResponse.json({
       success: true,
-      message: "Task updated successfully.",
       task,
     });
   } catch (error) {
-    console.error(
-      "Update task error:",
-      error,
-    );
+    console.error("Update task error:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to update task.";
 
     if (
-      error instanceof Error &&
-      (
-        error.message ===
-          "Project not found." ||
-        error.message ===
-          "Task not found."
-      )
+      message.includes("permission") ||
+      message.includes("member") ||
+      message.includes("workspace")
     ) {
       return NextResponse.json(
         {
           success: false,
-          message: error.message,
+          message,
         },
-        { status: 404 },
+        { status: 403 },
       );
     }
 
     if (
-      error instanceof Error &&
-      (
-        error.message.includes(
-          "does not belong to this project",
-        ) ||
-        error.message.includes(
-          "not a project member",
-        ) ||
-        error.message.includes(
-          "cannot be its own parent",
-        )
-      )
+      message.includes("not found") ||
+      message.includes("Not found")
     ) {
       return NextResponse.json(
         {
           success: false,
-          message: error.message,
+          message,
         },
-        { status: 400 },
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to update the task.",
+        message,
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }
