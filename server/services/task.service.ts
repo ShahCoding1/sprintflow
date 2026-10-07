@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 
 import { projectRepository } from "@/server/repositories/project.repository";
 import { taskRepository } from "@/server/repositories/task.repository";
+import { auditEventService } from "@/server/services/audit-event.service";
 
 type TaskType =
   | "EPIC"
@@ -149,7 +150,7 @@ export const taskService = {
           ) + 1
         : 0;
 
-    return taskRepository.create({
+    const task = await taskRepository.create({
       projectId: data.projectId,
       creatorId: data.creatorId,
       title: data.title.trim(),
@@ -165,12 +166,32 @@ export const taskService = {
       dueDate: data.dueDate,
       position,
     });
+
+    await auditEventService.recordCreated({
+      organizationId: data.organizationId,
+      userId: data.creatorId,
+      taskId: task.id,
+      entityType: "TASK",
+      entityId: task.id,
+      metadata: {
+        title: task.title,
+        type: task.type,
+        status: task.status,
+        priority: task.priority,
+        projectId: data.projectId,
+        sprintId: task.sprintId,
+        assigneeId: task.assigneeId,
+      },
+    });
+
+    return task;
   },
 
   async updateTask(data: {
     taskId: string;
     projectId: string;
     organizationId: string;
+    actorId: string;
     title: string;
     description?: string | null;
     type: TaskType;
@@ -219,29 +240,121 @@ export const taskService = {
       assigneeId: data.assigneeId,
     });
 
-    return taskRepository.update(
-      data.taskId,
-      {
-        title: data.title.trim(),
-        description:
-          data.description?.trim() || null,
-        type: data.type,
-        status: data.status,
-        priority: data.priority,
-        sprintId: data.sprintId,
-        parentId: data.parentId,
-        assigneeId: data.assigneeId,
-        storyPoints: data.storyPoints,
-        dueDate: data.dueDate,
-        position: data.position,
+    const updatedTask =
+      await taskRepository.update(
+        data.taskId,
+        {
+          title: data.title.trim(),
+          description:
+            data.description?.trim() || null,
+          type: data.type,
+          status: data.status,
+          priority: data.priority,
+          sprintId: data.sprintId,
+          parentId: data.parentId,
+          assigneeId: data.assigneeId,
+          storyPoints: data.storyPoints,
+          dueDate: data.dueDate,
+          position: data.position,
+        },
+      );
+
+    await auditEventService.recordUpdated({
+      organizationId: data.organizationId,
+      userId: data.actorId,
+      taskId: updatedTask.id,
+      entityType: "TASK",
+      entityId: updatedTask.id,
+      metadata: {
+        title: updatedTask.title,
+        type: updatedTask.type,
+        projectId: data.projectId,
+        previousStatus: existingTask.status,
+        newStatus: updatedTask.status,
+        previousPriority: existingTask.priority,
+        newPriority: updatedTask.priority,
+        previousAssigneeId:
+          existingTask.assigneeId,
+        newAssigneeId:
+          updatedTask.assigneeId,
+        previousSprintId:
+          existingTask.sprintId,
+        newSprintId:
+          updatedTask.sprintId,
       },
-    );
+    });
+
+    if (
+      existingTask.status !==
+      updatedTask.status
+    ) {
+      await auditEventService.record({
+        organizationId: data.organizationId,
+        userId: data.actorId,
+        taskId: updatedTask.id,
+        action: "STATUS_CHANGED",
+        entityType: "TASK",
+        entityId: updatedTask.id,
+        metadata: {
+          title: updatedTask.title,
+          previousStatus: existingTask.status,
+          newStatus: updatedTask.status,
+        },
+      });
+    }
+
+    if (
+      existingTask.priority !==
+      updatedTask.priority
+    ) {
+      await auditEventService.record({
+        organizationId: data.organizationId,
+        userId: data.actorId,
+        taskId: updatedTask.id,
+        action: "PRIORITY_CHANGED",
+        entityType: "TASK",
+        entityId: updatedTask.id,
+        metadata: {
+          title: updatedTask.title,
+          previousPriority:
+            existingTask.priority,
+          newPriority:
+            updatedTask.priority,
+        },
+      });
+    }
+
+    if (
+      existingTask.assigneeId !==
+      updatedTask.assigneeId
+    ) {
+      await auditEventService.record({
+        organizationId: data.organizationId,
+        userId: data.actorId,
+        taskId: updatedTask.id,
+        action: updatedTask.assigneeId
+          ? "ASSIGNED"
+          : "UNASSIGNED",
+        entityType: "TASK",
+        entityId: updatedTask.id,
+        metadata: {
+          title: updatedTask.title,
+          previousAssigneeId:
+            existingTask.assigneeId,
+          newAssigneeId:
+            updatedTask.assigneeId,
+        },
+      });
+    }
+
+    return updatedTask;
   },
 
   async moveTask(data: {
     taskId: string;
     projectId: string;
     organizationId: string;
+    actorId: string;
     status: TaskStatus;
     position: number;
   }) {
@@ -277,7 +390,8 @@ export const taskService = {
           task.status === data.status,
       )
       .sort(
-        (a, b) => a.position - b.position,
+        (a, b) =>
+          a.position - b.position,
       );
 
     const boundedPosition = Math.min(
@@ -286,31 +400,101 @@ export const taskService = {
     );
 
     const reorderedTasks = [
-      ...targetTasks.slice(0, boundedPosition),
+      ...targetTasks.slice(
+        0,
+        boundedPosition,
+      ),
       existingTask,
-      ...targetTasks.slice(boundedPosition),
+      ...targetTasks.slice(
+        boundedPosition,
+      ),
     ];
 
     await prisma.$transaction(
-      reorderedTasks.map((task, index) =>
-        prisma.task.update({
-          where: {
-            id: task.id,
-          },
-          data: {
-            status:
-              task.id === data.taskId
-                ? data.status
-                : task.status,
-            position: index,
-          },
-        }),
+      reorderedTasks.map(
+        (task, index) =>
+          prisma.task.update({
+            where: {
+              id: task.id,
+            },
+            data: {
+              status:
+                task.id === data.taskId
+                  ? data.status
+                  : task.status,
+              position: index,
+            },
+          }),
       ),
     );
 
-    return taskRepository.findByIdAndProject(
-      data.taskId,
-      data.projectId,
-    );
+    const updatedTask =
+      await taskRepository.findByIdAndProject(
+        data.taskId,
+        data.projectId,
+      );
+
+    if (!updatedTask) {
+      throw new Error("Task not found.");
+    }
+
+    const statusChanged =
+      existingTask.status !==
+      updatedTask.status;
+
+    const positionChanged =
+      existingTask.position !==
+      updatedTask.position;
+
+    if (
+      statusChanged ||
+      positionChanged
+    ) {
+      await auditEventService.record({
+        organizationId: data.organizationId,
+        userId: data.actorId,
+        taskId: updatedTask.id,
+        action: statusChanged
+          ? "STATUS_CHANGED"
+          : "MOVED",
+        entityType: "TASK",
+        entityId: updatedTask.id,
+        metadata: {
+          title: updatedTask.title,
+          previousStatus:
+            existingTask.status,
+          newStatus:
+            updatedTask.status,
+          previousPosition:
+            existingTask.position,
+          newPosition:
+            updatedTask.position,
+        },
+      });
+
+      if (
+        statusChanged &&
+        positionChanged
+      ) {
+        await auditEventService.record({
+          organizationId:
+            data.organizationId,
+          userId: data.actorId,
+          taskId: updatedTask.id,
+          action: "MOVED",
+          entityType: "TASK",
+          entityId: updatedTask.id,
+          metadata: {
+            title: updatedTask.title,
+            previousPosition:
+              existingTask.position,
+            newPosition:
+              updatedTask.position,
+          },
+        });
+      }
+    }
+
+    return updatedTask;
   },
 };

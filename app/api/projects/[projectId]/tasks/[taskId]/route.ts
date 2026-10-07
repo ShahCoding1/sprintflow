@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 
+import { auditEventService } from "@/server/services/audit-event.service";
 import { taskDeletionAuthorizationService } from "@/server/services/task-deletion-authorization.service";
 import { taskDeletionService } from "@/server/services/task-deletion.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
@@ -76,6 +77,24 @@ export async function DELETE(
         projectId,
         organizationId: workspace.id,
       });
+
+    await auditEventService.recordDeleted({
+      organizationId: workspace.id,
+      userId: session.user.id,
+      taskId: null,
+      entityType: "TASK",
+      entityId: taskId,
+      metadata: {
+        title:
+          deleted &&
+          typeof deleted === "object" &&
+          "title" in deleted
+            ? deleted.title
+            : undefined,
+        projectId,
+        deletedTaskId: taskId,
+      },
+    });
 
     return NextResponse.json({
       message: "Task deleted successfully.",

@@ -1,5 +1,6 @@
 import { teamRepository } from "@/server/repositories/team.repository";
 import { teamAuthorizationService } from "@/server/services/team-authorization.service";
+import { auditEventService } from "@/server/services/audit-event.service";
 
 export const teamService = {
   async getTeams(
@@ -56,12 +57,24 @@ export const teamService = {
       );
     }
 
-    return teamRepository.create({
+    const team = await teamRepository.create({
       organizationId: data.organizationId,
       name,
       description:
         data.description?.trim() || null,
     });
+
+    await auditEventService.recordCreated({
+      organizationId: data.organizationId,
+      userId: data.userId,
+      entityType: "TEAM",
+      entityId: team.id,
+      metadata: {
+        name: team.name,
+      },
+    });
+
+    return team;
   },
 
   async updateTeam(data: {
@@ -94,7 +107,7 @@ export const teamService = {
       );
     }
 
-    return teamRepository.update(
+    const team = await teamRepository.update(
       data.teamId,
       data.organizationId,
       {
@@ -103,6 +116,18 @@ export const teamService = {
           data.description?.trim() || null,
       },
     );
+
+    await auditEventService.recordUpdated({
+      organizationId: data.organizationId,
+      userId: data.userId,
+      entityType: "TEAM",
+      entityId: team.id,
+      metadata: {
+        name: team.name,
+      },
+    });
+
+    return team;
   },
 
   async deleteTeam(data: {
@@ -116,10 +141,22 @@ export const teamService = {
       data.teamId,
     );
 
-    return teamRepository.delete(
+    const team = await teamRepository.delete(
       data.teamId,
       data.organizationId,
     );
+
+    await auditEventService.recordDeleted({
+      organizationId: data.organizationId,
+      userId: data.userId,
+      entityType: "TEAM",
+      entityId: team.id,
+      metadata: {
+        name: team.name,
+      },
+    });
+
+    return team;
   },
 
   async getMembers(data: {
@@ -163,10 +200,24 @@ export const teamService = {
       );
     }
 
-    return teamRepository.createMember(
-      data.teamId,
-      data.targetUserId,
-    );
+    const member =
+      await teamRepository.createMember(
+        data.teamId,
+        data.targetUserId,
+      );
+
+    await auditEventService.recordAdded({
+      organizationId: data.organizationId,
+      userId: data.userId,
+      entityType: "TEAM_MEMBER",
+      entityId: member.id,
+      metadata: {
+        teamId: data.teamId,
+        targetUserId: data.targetUserId,
+      },
+    });
+
+    return member;
   },
 
   async removeMember(data: {
@@ -194,9 +245,23 @@ export const teamService = {
       );
     }
 
-    return teamRepository.deleteMember(
-      data.teamId,
-      data.targetUserId,
-    );
+    const member =
+      await teamRepository.deleteMember(
+        data.teamId,
+        data.targetUserId,
+      );
+
+    await auditEventService.recordRemoved({
+      organizationId: data.organizationId,
+      userId: data.userId,
+      entityType: "TEAM_MEMBER",
+      entityId: member.id,
+      metadata: {
+        teamId: data.teamId,
+        targetUserId: data.targetUserId,
+      },
+    });
+
+    return member;
   },
 };

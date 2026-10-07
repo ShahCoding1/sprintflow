@@ -1,9 +1,16 @@
 import { prisma } from "@/lib/db";
 
-type InvitationRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+type InvitationRole =
+  | "OWNER"
+  | "ADMIN"
+  | "MEMBER"
+  | "VIEWER";
 
 export const invitationRepository = {
-  findById(invitationId: string, organizationId: string) {
+  findById(
+    invitationId: string,
+    organizationId: string,
+  ) {
     return prisma.invitation.findFirst({
       where: {
         id: invitationId,
@@ -63,7 +70,10 @@ export const invitationRepository = {
     });
   },
 
-  findPendingByEmail(organizationId: string, email: string) {
+  findPendingByEmail(
+    organizationId: string,
+    email: string,
+  ) {
     return prisma.invitation.findFirst({
       where: {
         organizationId,
@@ -233,21 +243,25 @@ export const invitationRepository = {
     });
   },
 
-  async accept(invitationId: string, userId: string) {
+  async accept(
+    invitationId: string,
+    userId: string,
+  ) {
     return prisma.$transaction(async (tx) => {
-      const invitation = await tx.invitation.findUnique({
-        where: {
-          id: invitationId,
-        },
-        select: {
-          id: true,
-          organizationId: true,
-          email: true,
-          role: true,
-          status: true,
-          expiresAt: true,
-        },
-      });
+      const invitation =
+        await tx.invitation.findUnique({
+          where: {
+            id: invitationId,
+          },
+          select: {
+            id: true,
+            organizationId: true,
+            email: true,
+            role: true,
+            status: true,
+            expiresAt: true,
+          },
+        });
 
       if (!invitation) {
         throw new Error("INVITATION_NOT_FOUND");
@@ -288,14 +302,17 @@ export const invitationRepository = {
         user.email.toLowerCase() !==
         invitation.email.toLowerCase()
       ) {
-        throw new Error("INVITATION_EMAIL_MISMATCH");
+        throw new Error(
+          "INVITATION_EMAIL_MISMATCH",
+        );
       }
 
       const existingMember =
         await tx.organizationMember.findUnique({
           where: {
             organizationId_userId: {
-              organizationId: invitation.organizationId,
+              organizationId:
+                invitation.organizationId,
               userId: user.id,
             },
           },
@@ -311,7 +328,8 @@ export const invitationRepository = {
       const member =
         await tx.organizationMember.create({
           data: {
-            organizationId: invitation.organizationId,
+            organizationId:
+              invitation.organizationId,
             userId: user.id,
             role: invitation.role,
           },
@@ -322,6 +340,24 @@ export const invitationRepository = {
             role: true,
           },
         });
+
+      await tx.activityLog.create({
+        data: {
+          organizationId:
+            invitation.organizationId,
+          userId: user.id,
+          taskId: null,
+          action: "ADDED",
+          entityType: "WORKSPACE_MEMBER",
+          entityId: member.id,
+          metadata: {
+            targetUserId: user.id,
+            role: member.role,
+            source: "INVITATION_ACCEPTED",
+            invitationId: invitation.id,
+          },
+        },
+      });
 
       await tx.invitation.update({
         where: {

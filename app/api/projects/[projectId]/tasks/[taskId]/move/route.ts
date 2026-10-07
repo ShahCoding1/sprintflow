@@ -63,6 +63,7 @@ export async function PATCH(
         taskId,
         projectId,
         organizationId: workspace.id,
+        actorId: workspace.userId,
         status: parsed.data.status,
         position: parsed.data.position,
       });
@@ -72,7 +73,10 @@ export async function PATCH(
       task,
     });
   } catch (error) {
-    console.error("Move task error:", error);
+    console.error(
+      "Move task error:",
+      error,
+    );
 
     const message =
       error instanceof Error

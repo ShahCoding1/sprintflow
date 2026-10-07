@@ -119,7 +119,8 @@ model User {
   attachments   TaskAttachment[]
   notifications Notification[]
 
-  activities ActivityLog[]
+  activities      ActivityLog[]
+  taskTimeEntries TaskTimeEntry[]
 
   @@index([email])
 }
@@ -374,7 +375,8 @@ model Task {
   labels      TaskLabelAssignment[]
   attachments TaskAttachment[]
 
-  activities ActivityLog[]
+  activities      ActivityLog[]
+  taskTimeEntries TaskTimeEntry[]
 
   @@index([projectId])
   @@index([sprintId])
@@ -534,4 +536,28 @@ model ActivityLog {
   @@index([taskId])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model TaskTimeEntry {
+  id String @id @default(uuid())
+
+  taskId String
+  userId String
+
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([userId, endedAt])
+  @@index([taskId, userId])
 }

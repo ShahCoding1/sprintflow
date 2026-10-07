@@ -1,4 +1,5 @@
 import { projectRepository } from "@/server/repositories/project.repository";
+import { auditEventService } from "@/server/services/audit-event.service";
 
 export const projectService = {
   async createProject(data: {
@@ -8,6 +9,7 @@ export const projectService = {
     description?: string;
     startDate?: Date;
     endDate?: Date;
+    userId?: string | null;
   }) {
     const normalizedKey = data.key.trim().toUpperCase();
 
@@ -29,6 +31,17 @@ export const projectService = {
       description: data.description?.trim() || undefined,
       startDate: data.startDate,
       endDate: data.endDate,
+    });
+
+    await auditEventService.recordCreated({
+      organizationId: data.organizationId,
+      userId: data.userId ?? null,
+      entityType: "PROJECT",
+      entityId: project.id,
+      metadata: {
+        name: project.name,
+        key: project.key,
+      },
     });
 
     return project;
@@ -63,6 +76,7 @@ export const projectService = {
       | "ARCHIVED";
     startDate?: Date | null;
     endDate?: Date | null;
+    userId?: string | null;
   }) {
     const normalizedKey = data.key.trim().toUpperCase();
 
@@ -103,6 +117,18 @@ export const projectService = {
         endDate: data.endDate,
       },
     );
+
+    await auditEventService.recordUpdated({
+      organizationId: data.organizationId,
+      userId: data.userId ?? null,
+      entityType: "PROJECT",
+      entityId: project.id,
+      metadata: {
+        name: project.name,
+        key: project.key,
+        status: project.status,
+      },
+    });
 
     return project;
   },
