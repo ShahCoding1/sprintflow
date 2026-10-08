@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
-import TaskTimeTracker from "@/components/time-tracking/TaskTimeTracker";
+import TaskActivity from "@/components/tasks/TaskActivity";
+import TaskAttachments from "@/components/tasks/TaskAttachments";
 import TaskComments from "@/components/tasks/TaskComments";
 import TaskLabels from "@/components/tasks/TaskLabels";
+import TaskTimeTracker from "@/components/time-tracking/TaskTimeTracker";
 import { taskService } from "@/server/services/task.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -201,6 +203,16 @@ export default async function TaskPage({
             currentUserId={session.user.id}
           />
         </section>
+
+        <TaskAttachments
+          projectId={projectId}
+          taskId={task.id}
+        />
+
+        <TaskActivity
+          projectId={projectId}
+          taskId={task.id}
+        />
       </div>
     </main>
   );

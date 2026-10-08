@@ -41,10 +41,9 @@ export default function UserTimeSummary({
   const [error, setError] = useState("");
 
   const loadSummary = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
     try {
+      setError("");
+
       const response = await fetch(
         `/api/time/summary?projectId=${encodeURIComponent(
           projectId,
@@ -76,8 +75,54 @@ export default function UserTimeSummary({
   }, [projectId]);
 
   useEffect(() => {
-    void loadSummary();
-  }, [loadSummary]);
+    let cancelled = false;
+
+    const initializeSummary = async () => {
+      try {
+        const response = await fetch(
+          `/api/time/summary?projectId=${encodeURIComponent(
+            projectId,
+          )}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.error ??
+              "Failed to load your time summary.",
+          );
+        }
+
+        if (!cancelled) {
+          setSummary(payload.data);
+          setError("");
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to load your time summary.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initializeSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   if (loading) {
     return (
@@ -100,7 +145,10 @@ export default function UserTimeSummary({
 
           <button
             type="button"
-            onClick={() => void loadSummary()}
+            onClick={() => {
+              setLoading(true);
+              void loadSummary();
+            }}
             className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             <RefreshCw className="h-4 w-4" />
@@ -138,7 +186,10 @@ export default function UserTimeSummary({
 
         <button
           type="button"
-          onClick={() => void loadSummary()}
+          onClick={() => {
+            setLoading(true);
+            void loadSummary();
+          }}
           className="inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
         >
           <RefreshCw className="h-4 w-4" />

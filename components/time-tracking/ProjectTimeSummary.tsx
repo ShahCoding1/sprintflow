@@ -55,10 +55,9 @@ export default function ProjectTimeSummary({
   const [error, setError] = useState("");
 
   const loadSummary = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
     try {
+      setError("");
+
       const response = await fetch(
         `/api/projects/${projectId}/time-summary`,
         {
@@ -88,8 +87,51 @@ export default function ProjectTimeSummary({
   }, [projectId]);
 
   useEffect(() => {
-    void loadSummary();
-  }, [loadSummary]);
+    let cancelled = false;
+
+    const initializeSummary = async () => {
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/time-summary`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.error ?? "Failed to load time summary.",
+          );
+        }
+
+        if (!cancelled) {
+          setSummary(payload.data);
+          setError("");
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to load time summary.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initializeSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   if (loading) {
     return (
@@ -112,7 +154,10 @@ export default function ProjectTimeSummary({
 
           <button
             type="button"
-            onClick={() => void loadSummary()}
+            onClick={() => {
+              setLoading(true);
+              void loadSummary();
+            }}
             className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             <RefreshCw className="h-4 w-4" />
@@ -142,7 +187,10 @@ export default function ProjectTimeSummary({
 
         <button
           type="button"
-          onClick={() => void loadSummary()}
+          onClick={() => {
+            setLoading(true);
+            void loadSummary();
+          }}
           className="inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
         >
           <RefreshCw className="h-4 w-4" />
@@ -229,9 +277,7 @@ export default function ProjectTimeSummary({
 
                   <div className="shrink-0 text-right">
                     <p className="font-semibold">
-                      {formatDuration(
-                        user.durationSeconds,
-                      )}
+                      {formatDuration(user.durationSeconds)}
                     </p>
 
                     <p className="text-xs text-muted-foreground">
@@ -271,9 +317,7 @@ export default function ProjectTimeSummary({
                   </div>
 
                   <p className="shrink-0 font-semibold">
-                    {formatDuration(
-                      task.durationSeconds,
-                    )}
+                    {formatDuration(task.durationSeconds)}
                   </p>
                 </div>
               ))
