@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import TaskTimeTracker from "@/components/time-tracking/TaskTimeTracker";
 import TaskComments from "@/components/tasks/TaskComments";
 import TaskLabels from "@/components/tasks/TaskLabels";
-import TaskTimeTracker from "@/components/time-tracking/TaskTimeTracker";
 import { taskService } from "@/server/services/task.service";
 import { workspaceContextService } from "@/server/services/workspace-context.service";
 
@@ -154,8 +154,7 @@ export default async function TaskPage({
               </p>
 
               <p className="mt-1 text-sm">
-                {task.storyPoints ??
-                  "Not estimated"}
+                {task.storyPoints ?? "Not estimated"}
               </p>
             </div>
 
@@ -168,14 +167,11 @@ export default async function TaskPage({
                 {task.dueDate
                   ? new Date(
                       task.dueDate,
-                    ).toLocaleDateString(
-                      "en-US",
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      },
-                    )
+                    ).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })
                   : "No due date"}
               </p>
             </div>
