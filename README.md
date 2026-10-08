@@ -1,40 +1,85 @@
-```markdown
 # SprintFlow
 
-> Modern project management for ambitious software teams.
-
-SprintFlow is a full-stack SaaS project management platform designed to help software teams organize projects, plan sprints, manage tasks, collaborate with team members, and understand project progress through analytics.
-
-The platform follows a multi-tenant architecture where organizations act as isolated workspaces with role-based access control and server-side authorization.
+> A modern, secure, multi-tenant SaaS platform for project management, sprint planning, team collaboration, Kanban workflows, task management, time tracking, notifications, and project analytics.
 
 ---
 
-## ✨ Overview
+# 📌 Overview
 
-SprintFlow brings the essential software development workflow into one workspace:
+**SprintFlow** is a full-stack SaaS project management platform designed to help organizations plan projects, manage teams, organize backlogs, run Agile sprints, track tasks, collaborate with team members, monitor productivity, and analyze project performance from a centralized workspace.
 
-- Organizations and workspaces
-- Projects and project members
-- Teams
-- Backlogs
-- Sprints
-- Kanban task management
-- Stories, tasks, bugs, epics and subtasks
-- Task comments
-- Labels
-- File attachments
-- Notifications
-- Activity history
-- Workspace invitations
-- Workspace settings
-- Audit logging
+The platform is designed with a strong focus on:
+
+- Multi-tenant architecture
+- Secure authentication
+- Workspace isolation
+- Role-based access control
+- Project and team management
+- Agile sprint workflows
+- Kanban boards
+- Task collaboration
 - Time tracking
-- Project and user time summaries
-- Analytics and project insights
-- Global search and command palette
-- Authentication and role-based authorization
+- Notifications
+- Activity feeds
+- Audit logging
+- Analytics
+- Responsive UI
+- Clean and scalable architecture
 
-The goal is to provide a focused workspace where teams can move from planning to execution while keeping project activity and progress visible.
+SprintFlow is built as a serious production-oriented SaaS application rather than a simple CRUD project.
+
+---
+
+# 🎯 Vision
+
+The goal of SprintFlow is to provide teams with a centralized workspace where they can:
+
+- Create and manage organizations
+- Create projects
+- Build and manage teams
+- Plan product backlogs
+- Create and prioritize tasks
+- Organize work into sprints
+- Manage work through Kanban boards
+- Collaborate through comments
+- Assign tasks to team members
+- Track time spent on tasks
+- Monitor project activity
+- Receive notifications
+- Analyze project performance
+- Maintain workspace-level audit history
+
+The long-term vision is to evolve SprintFlow into a complete intelligent project-management platform with integrations, automation, advanced analytics, billing, APIs, and AI-powered project intelligence.
+
+---
+
+# ✨ Key Highlights
+
+- 🔐 Secure authentication
+- 🏢 Multi-tenant organizations/workspaces
+- 👥 Workspace membership and RBAC
+- 📁 Project management
+- 👨‍💻 Team management
+- 📋 Backlog management
+- 📝 Task management
+- 🔀 Subtasks
+- 🏃 Sprint planning
+- 📌 Kanban workflow
+- 💬 Task comments
+- 🏷️ Labels
+- 📎 Task attachments
+- 🔔 Notifications
+- 🕒 Time tracking
+- 📊 Analytics
+- 🧾 Activity feed
+- 🔍 Search and command palette
+- ✉️ Workspace invitations
+- ⚙️ Workspace settings
+- 🛡️ Audit infrastructure
+- 📱 Responsive interface
+- 🧱 Layered architecture
+- 🗄️ PostgreSQL database
+- 🚀 CI/CD foundation
 
 ---
 
@@ -42,251 +87,261 @@ The goal is to provide a focused workspace where teams can move from planning to
 
 ## 🔐 Authentication
 
-- User registration
+SprintFlow provides authentication functionality based on:
+
+- Email/password registration
 - Secure password hashing
-- Credentials-based authentication
+- Login
 - Session management
+- JWT-based authentication
 - Protected application routes
-- Server-side authentication checks
-- Authenticated API access
+- Server-side session validation
+
+Authentication is implemented using Auth.js / NextAuth.
+
+Passwords are never stored as plain text.
 
 ---
 
-## 🏢 Organizations & Workspaces
+# 🏢 Organizations & Workspaces
 
-- Multi-tenant workspace architecture
-- Organization membership
-- Workspace context
-- Workspace selection
-- Role-based access
-- Workspace settings
-- Member management
-- Workspace invitations
+SprintFlow uses a multi-tenant workspace model.
 
----
+Each organization/workspace provides an isolated environment for:
 
-## 📁 Projects
+- Projects
+- Teams
+- Members
+- Tasks
+- Sprints
+- Activity
+- Notifications
+- Settings
+- Audit records
 
-- Create projects
-- Edit project information
-- Project status management
-- Project members
-- Project-level authorization
-- Project overview and statistics
+Users can belong to organizations through workspace memberships.
 
-Supported project states include:
-
-- Planning
-- Active
-- Completed
-- Archived
+Workspace context is resolved server-side and verified against the authenticated user's membership.
 
 ---
 
-## 👥 Teams
+# 👥 Workspace Members & RBAC
 
-- Create and manage teams
-- Team membership
-- Team-based organization
-- Role-aware access control
+SprintFlow includes workspace membership and role-based access control.
 
----
+Workspace roles are used to control access to organization resources.
 
-## 📋 Backlog & Tasks
+Authorization is enforced on the server rather than relying only on frontend visibility.
 
-SprintFlow supports multiple work item types:
-
-- Epic
-- Story
-- Task
-- Bug
-- Subtask
-
-Tasks support:
-
-- Title
-- Description
-- Status
-- Priority
-- Assignee
-- Sprint
-- Parent task
-- Story points
-- Due date
-- Position/order
-
-Supported task priorities:
-
-- Low
-- Medium
-- High
-- Urgent
-
-Supported task statuses:
-
-- To Do
-- In Progress
-- In Review
-- Done
-- Blocked
+This helps prevent users from accessing resources belonging to another organization.
 
 ---
 
-## 🏃 Sprints
+# 📁 Project Management
 
-- Create sprints
-- Planned and active sprint states
-- Sprint task planning
-- Sprint workflow management
-- Sprint progress tracking
+Projects provide the primary workspace for organizing development work.
 
-Sprint workflow supports organizing project work into focused development cycles.
+Projects can be associated with:
+
+- Organizations
+- Teams
+- Members
+- Tasks
+- Sprints
+- Backlogs
+- Analytics
+- Activity
+
+Projects are protected by organization and membership authorization.
 
 ---
 
-## 🗂️ Kanban Board
+# 👨‍💻 Team Management
 
-Tasks can be managed through a visual Kanban workflow.
+Teams allow organizations to group users around specific areas of work.
 
-Supported workflow states include:
+Team functionality supports:
 
-- To Do
-- In Progress
-- In Review
-- Done
-- Blocked
+- Team creation
+- Team management
+- Team members
+- Project relationships
+- Workspace authorization
+- Audit events
 
-The board supports:
+Team operations are implemented using the same layered backend architecture used throughout SprintFlow.
 
-- Drag and drop
-- Task movement between columns
-- Task status updates
+---
+
+# 📋 Backlog Management
+
+SprintFlow supports Agile-style backlog management.
+
+Teams can organize work before moving it into active sprints.
+
+Backlog functionality provides the foundation for:
+
+- Stories
+- Tasks
+- Bugs
+- Prioritization
+- Sprint planning
+- Kanban workflows
+
+---
+
+# 📝 Task Management
+
+Tasks are the central unit of work in SprintFlow.
+
+Task functionality includes:
+
 - Task creation
 - Task editing
+- Task deletion
 - Task assignment
-- Task prioritization
-- Story points
+- Task status
+- Task priority
+- Project association
 - Sprint association
-
-Task changes are persisted through the application API.
-
----
-
-## 💬 Collaboration
-
-Task collaboration includes:
-
-- Comments
-- Activity history
-- Notifications
 - Labels
-- File attachments
-- Task assignments
 - Subtasks
+- Comments
+- Attachments
+- Activity history
+- Time tracking
 
-This allows teams to keep communication and project context close to the work itself.
+Task operations are protected by server-side authorization.
 
 ---
 
-## 🔔 Notifications
+# 🔀 Subtasks
 
-SprintFlow provides notifications for important project events, including:
+Tasks can contain subtasks to break larger pieces of work into smaller units.
 
-- Task assignments
+Subtasks make it easier to:
+
+- Divide complex work
+- Track smaller deliverables
+- Monitor task progress
+- Organize implementation steps
+
+---
+
+# 🏃 Sprint Management
+
+SprintFlow supports Agile sprint planning and execution.
+
+Sprint functionality includes:
+
+- Sprint creation
+- Sprint management
+- Sprint lifecycle
+- Sprint task organization
+- Sprint planning
+- Sprint completion
+- Sprint-related notifications
+- Sprint analytics
+
+Sprints provide a structured time-boxed workflow for teams.
+
+---
+
+# 📌 Kanban Board
+
+SprintFlow provides Kanban-style project workflows.
+
+The board is designed to allow teams to visualize work based on task status.
+
+Kanban functionality provides:
+
+- Visual task management
+- Status-based columns
+- Task movement
+- Drag-and-drop workflows
+- Sprint/task organization
+
+The system is designed to keep task movement synchronized with backend authorization and persistence.
+
+---
+
+# 💬 Task Comments
+
+Tasks support collaborative comments.
+
+Comments allow team members to:
+
+- Discuss implementation
+- Provide feedback
+- Share context
+- Communicate about issues
+- Maintain task-level discussion history
+
+Comment activity can also contribute to task activity and notification workflows.
+
+---
+
+# 🏷️ Labels
+
+SprintFlow supports task labels for classification and filtering.
+
+Labels can be used for:
+
+- Bug identification
+- Feature categorization
+- Priority grouping
+- Team-specific workflows
+- Custom task organization
+
+Task-label relationships are stored through dedicated database relations.
+
+---
+
+# 📎 Task Attachments
+
+SprintFlow supports task-level file attachments.
+
+Attachment functionality includes:
+
+- Uploading files
+- Storing attachment metadata
+- Downloading files
+- Deleting attachments
+- Task-level authorization
+- User ownership
+- File type restrictions
+- File size validation
+- Secure storage-key handling
+
+The storage layer is abstracted so the application can later move from local storage to a production object-storage provider without changing the higher-level business logic.
+
+---
+
+# 🔔 Notifications
+
+SprintFlow provides notification infrastructure for important workspace and project events.
+
+Supported notification categories include:
+
+- Task assignment
+- Task mentions
 - Task comments
 - Task status changes
-- Sprint events
+- Sprint started
+- Sprint completed
 - Project invitations
 - Organization invitations
+- System notifications
 
-Notifications support:
-
-- Unread counts
-- Read/unread state
-- Notification actions
-- Related project navigation
-- Related task navigation
+Notifications are handled through centralized notification services rather than duplicating notification logic across individual UI components.
 
 ---
 
-## 📎 Task Attachments
+# 🧾 Activity Feed
 
-Tasks can contain file attachments with:
+SprintFlow provides task-level activity history.
 
-- File name
-- MIME type
-- File size
-- Storage key
-- Upload operations
-- Delete operations
-- Server-side authorization
-- Storage path validation
-
-Attachment storage is implemented behind a storage abstraction so the storage provider can be changed later without coupling application logic to a specific implementation.
-
----
-
-## ⏱️ Time Tracking
-
-SprintFlow includes task-level time tracking.
-
-Features include:
-
-- Start timer
-- Stop timer
-- Manual time entries
-- Time-entry history
-- Edit time entries
-- Delete time entries
-- Active timer detection
-- Project time summaries
-- User time summaries
-- Task-level tracked time
-
-Time entries support:
-
-- Start time
-- End time
-- Duration
-- Description
-- User ownership
-- Task association
-
----
-
-## 📊 Analytics
-
-SprintFlow provides project insights including time and delivery metrics.
-
-The analytics architecture supports metrics such as:
-
-- Sprint progress
-- Velocity
-- Burndown
-- Completion rate
-- Cycle time
-- Lead time
-- Tracked time
-- Project progress
-- User time summaries
-
-Analytics are designed to help teams understand both project progress and development activity.
-
----
-
-## 🔎 Search & Command Palette
-
-Global search and command-based navigation make it easier to quickly access projects, tasks, and other workspace resources.
-
-The command palette provides a fast way to navigate through the application without manually opening multiple pages.
-
----
-
-## 📝 Activity & Audit History
-
-SprintFlow records important system and project events.
-
-The activity architecture supports actions such as:
+Activity events can represent actions such as:
 
 - Created
 - Updated
@@ -300,635 +355,1071 @@ The activity architecture supports actions such as:
 - Added
 - Removed
 
-Workspace audit infrastructure provides an additional layer for tracking important organizational actions.
+The activity feed provides visibility into changes made to tasks.
+
+Activity access is authorized through the current workspace and project/task relationship.
 
 ---
 
-# 🏗️ Architecture
+# 🛡️ Audit Infrastructure
 
-SprintFlow follows a layered architecture designed to keep business logic maintainable and authorization centralized.
+SprintFlow includes workspace-level audit infrastructure for tracking important system events.
 
-```text
-┌──────────────────────────────┐
-│             UI               │
-│     Next.js / React          │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│         Validation           │
-│             Zod              │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│       API / Server           │
-│          Routes              │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│          Service             │
-│       Business Logic         │
-└──────────────┬───────────────┘
-               │
-               ├───────────────┐
-               ▼               ▼
-┌────────────────────┐  ┌────────────────────┐
-│   Authorization    │  │    Repository      │
-│      Service       │  │       Layer        │
-└────────────────────┘  └─────────┬──────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │      Prisma      │
-                         │       ORM        │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   PostgreSQL     │
-                         └──────────────────┘
-```
+Audit functionality is designed to provide:
+
+- Accountability
+- Security visibility
+- Change tracking
+- Administrative transparency
+
+Centralized audit event services allow different modules to record important events consistently.
+
+Audit integration exists across areas such as:
+
+- Projects
+- Teams
+- Workspace members
+- Invitations
 
 ---
 
-# 🖥️ Frontend Architecture
+# 🕒 Time Tracking
 
-The frontend is built with:
+SprintFlow includes built-in task time tracking.
 
-- Next.js App Router
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Lucide React
-- React Hook Form
-- Zod
+Users can:
 
-The UI is organized into reusable components and feature-specific modules.
+- Start a timer
+- Stop a timer
+- Create manual time entries
+- Edit time entries
+- Delete time entries
+- View task time history
+- View total tracked time
+- View user-level summaries
+- View project-level summaries
 
-Major UI areas include:
+Time tracking includes:
 
-```text
-components/
-├── ui/
-├── layout/
-├── tasks/
-├── sprints/
-├── notifications/
-├── labels/
-├── analytics/
-├── teams/
-├── invitations/
-├── audit/
-└── time-tracking/
-```
-
----
-
-# ⚙️ Backend Architecture
-
-Application logic is separated into:
-
+- Validation
+- Authorization
+- Repository layer
+- Service layer
 - API routes
-- Services
-- Repositories
-- Authorization services
-- Validation schemas
+- Responsive UI
+- Analytics integration
 
-This separation keeps database access, authorization, validation, and business rules out of presentation components.
+Only one active timer is allowed for a user at a time.
 
-Example request flow:
-
-```text
-Request
-   │
-   ▼
-API Route
-   │
-   ▼
-Authentication
-   │
-   ▼
-Workspace Context
-   │
-   ▼
-Validation
-   │
-   ▼
-Authorization
-   │
-   ▼
-Service
-   │
-   ▼
-Repository
-   │
-   ▼
-Prisma
-   │
-   ▼
-PostgreSQL
-```
+Time-entry access is verified against the organization, project, task, and authenticated user.
 
 ---
 
-# 🗄️ Database Architecture
+# 📊 Analytics
 
-SprintFlow uses:
+SprintFlow includes project analytics designed to help teams understand project performance.
 
-- PostgreSQL
-- Prisma ORM
-- Prisma PostgreSQL adapter
-- Neon PostgreSQL during development
+Analytics functionality provides the foundation for metrics such as:
 
-Database changes are managed through Prisma migrations.
+- Velocity
+- Burndown
+- Cycle time
+- Lead time
+- Completion rate
+- Time tracking
+- Project productivity
 
-The database is designed around organizations, projects, teams, tasks, sprints, members, collaboration, notifications, audit/activity records, and time tracking.
-
----
-
-# 🛠️ Technology Stack
-
-| Category | Technology |
-|---|---|
-| Framework | Next.js 16 |
-| UI | React 19 |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 |
-| Components | shadcn/ui |
-| Icons | Lucide React |
-| Forms | React Hook Form |
-| Validation | Zod |
-| Authentication | Auth.js / NextAuth |
-| Password Hashing | bcryptjs |
-| ORM | Prisma |
-| Database | PostgreSQL |
-| Database Platform | Neon |
-| Drag & Drop | dnd-kit |
-| Date Utilities | date-fns |
-| Utility Classes | clsx / tailwind-merge |
-| Version Control | Git / GitHub |
+Analytics are designed to be derived from actual project data rather than static or hard-coded values.
 
 ---
 
-# 📂 Project Structure
+# 🔍 Search & Command Palette
 
-```text
-sprintflow/
-│
-├── app/
-│   ├── api/
-│   ├── dashboard/
-│   ├── projects/
-│   ├── tasks/
-│   ├── teams/
-│   ├── analytics/
-│   └── settings/
-│
-├── components/
-│   ├── ui/
-│   ├── layout/
-│   │   ├── sidebar/
-│   │   └── header/
-│   │
-│   ├── tasks/
-│   ├── sprints/
-│   ├── notifications/
-│   ├── labels/
-│   ├── search/
-│   ├── analytics/
-│   ├── teams/
-│   ├── invitations/
-│   ├── audit/
-│   └── time-tracking/
-│
-├── features/
-│   ├── auth/
-│   ├── organization/
-│   ├── project/
-│   ├── task/
-│   └── time-tracking/
-│
-├── server/
-│   ├── repositories/
-│   └── services/
-│
-├── lib/
-│   ├── db/
-│   └── utils/
-│
-├── prisma/
-│   ├── schema.prisma
-│   └── migrations/
-│
-├── public/
-│
-├── tests/
-│
-├── types/
-│
-├── auth.ts
-├── proxy.ts
-├── prisma.config.ts
-├── package.json
-└── README.md
-```
+SprintFlow includes application-wide search and command-palette functionality.
+
+The command palette provides a fast way to navigate through the application and access important actions.
+
+It is designed to improve productivity for users working across:
+
+- Projects
+- Tasks
+- Teams
+- Sprints
+- Settings
+- Other application areas
 
 ---
 
-# 🔒 Security
+# ✉️ Workspace Invitations
 
-Security is treated as a core application requirement.
+Workspace administrators can invite users to join an organization.
 
-SprintFlow uses:
+Invitation functionality includes:
 
-- Server-side authentication
+- Invitation creation
+- Invitation management
+- Invitation acceptance
+- Workspace membership creation
+- Authorization
+- Notification integration
+- Audit integration
+
+Invitation acceptance is also recorded through the audit infrastructure.
+
+---
+
+# ⚙️ Workspace Settings
+
+Workspace settings provide administrative controls for organization-level configuration.
+
+Settings are protected using workspace authorization and membership checks.
+
+The architecture allows additional workspace configuration capabilities to be added without changing the core application structure.
+
+---
+
+# 🧱 Architecture
+
+SprintFlow follows a layered architecture designed for maintainability, security, and scalability.
+
+The main request flow is:
+
+    UI
+     ↓
+    Validation
+     ↓
+    API / Server Action
+     ↓
+    Service
+     ↓
+    Authorization
+     ↓
+    Repository
+     ↓
+    Prisma
+     ↓
+    PostgreSQL
+
+The goal is to keep:
+
+- UI logic in components
+- Validation in schemas
+- Business logic in services
+- Authorization in authorization services
+- Database operations in repositories
+- Database access inside Prisma
+- Data persisted in PostgreSQL
+
+This separation keeps the application modular and easier to maintain.
+
+---
+
+# 🔐 Security Architecture
+
+Security is treated as a core application concern.
+
+SprintFlow follows principles such as:
+
 - Server-side authorization
-- Organization membership checks
-- Project membership checks
-- Role-based access control
 - Tenant isolation
-- Zod request validation
+- Workspace membership verification
+- Role-based permissions
+- Input validation
 - Secure password hashing
-- Protected application routes
+- Environment-based secrets
 - Database constraints
-- Attachment path validation
+- Safe file storage
+- Protected application routes
+- No reliance on frontend authorization alone
 - Controlled error responses
-- Environment variables for secrets
-- Audit/activity logging
+- Audit infrastructure
 
-The frontend is never treated as the final authorization boundary.
+The application is designed around the principle:
 
-Authorization is performed on the server before protected resources are accessed or modified.
+> Never trust the client.
 
----
+Frontend visibility is not treated as a security boundary.
 
-# 🧩 Multi-Tenant Architecture
-
-SprintFlow is designed around organizations as isolated workspaces.
-
-Resources are associated with their organization through their project/workspace relationships.
-
-Authorization follows the user's membership in the organization before allowing access to protected resources.
-
-Conceptually:
-
-```text
-User
- │
- ├── Organization Membership
- │
- ▼
-Organization / Workspace
- │
- ├── Members
- │
- ├── Teams
- │
- ├── Projects
- │    │
- │    ├── Project Members
- │    ├── Tasks
- │    ├── Sprints
- │    ├── Comments
- │    ├── Labels
- │    ├── Attachments
- │    ├── Activity
- │    └── Time Entries
- │
- ├── Notifications
- │
- └── Workspace Settings
-```
-
-This architecture provides a foundation for scaling SprintFlow into a production SaaS platform.
+Every sensitive server operation verifies authentication, workspace context, resource ownership, and permissions as required.
 
 ---
 
-# ⚙️ Getting Started
+# 🗄️ Database
 
-## Prerequisites
+SprintFlow uses PostgreSQL with Prisma ORM.
 
-Make sure you have installed:
+The database architecture supports relationships between:
 
-- Node.js 22+
-- npm
-- PostgreSQL-compatible database
-- Git
+- Users
+- Organizations
+- Organization members
+- Projects
+- Project members
+- Teams
+- Tasks
+- Subtasks
+- Sprints
+- Comments
+- Labels
+- Attachments
+- Activity logs
+- Notifications
+- Time entries
+- Invitations
+- Audit records
 
----
-
-## 1. Clone the repository
-
-```bash
-git clone https://github.com/ShahCoding1/sprintflow.git
-cd sprintflow
-```
-
----
-
-## 2. Install dependencies
-
-```bash
-npm install
-```
+Prisma migrations are used to manage database changes.
 
 ---
 
-## 3. Configure environment variables
+# 🧰 Technology Stack
+
+| Technology         | Purpose                    |
+| ------------------ | -------------------------- |
+| Next.js 16.3.5     | Full-stack React framework |
+| React 19.2.8       | User interface             |
+| TypeScript         | Type safety                |
+| Tailwind CSS 4     | Styling                    |
+| shadcn/ui          | UI foundation              |
+| Base UI            | Accessible UI primitives   |
+| Lucide React       | Icons                      |
+| Auth.js / NextAuth | Authentication             |
+| bcryptjs           | Password hashing           |
+| PostgreSQL         | Relational database        |
+| Neon               | PostgreSQL hosting         |
+| Prisma 7.10.0      | ORM                        |
+| Zod                | Validation                 |
+| React Hook Form    | Form management            |
+| date-fns           | Date/time utilities        |
+| dnd-kit            | Drag-and-drop              |
+| ESLint             | Code quality               |
+| GitHub Actions     | CI/CD                      |
+
+---
+
+# 📦 Project Structure
+
+    sprintflow/
+    │
+    ├── app/
+    │   ├── api/
+    │   ├── dashboard/
+    │   ├── projects/
+    │   ├── tasks/
+    │   ├── teams/
+    │   ├── analytics/
+    │   ├── settings/
+    │   └── ...
+    │
+    ├── components/
+    │   ├── ui/
+    │   ├── layout/
+    │   │   ├── sidebar/
+    │   │   └── header/
+    │   ├── sprints/
+    │   ├── tasks/
+    │   ├── notifications/
+    │   ├── labels/
+    │   ├── search/
+    │   ├── analytics/
+    │   ├── teams/
+    │   ├── settings/
+    │   ├── invitations/
+    │   ├── audit/
+    │   └── time-tracking/
+    │
+    ├── features/
+    │   ├── auth/
+    │   ├── organization/
+    │   ├── project/
+    │   ├── task/
+    │   └── time-tracking/
+    │
+    ├── lib/
+    │   ├── db/
+    │   ├── utils/
+    │   └── storage/
+    │
+    ├── server/
+    │   ├── repositories/
+    │   └── services/
+    │
+    ├── prisma/
+    │   ├── schema.prisma
+    │   └── migrations/
+    │
+    ├── public/
+    │
+    ├── tests/
+    │
+    ├── types/
+    │
+    ├── auth.ts
+    ├── proxy.ts
+    ├── prisma.config.ts
+    ├── package.json
+    ├── tsconfig.json
+    └── README.md
+
+---
+
+# 🌎 Environment Variables
 
 Create a `.env` file in the project root.
 
 Example:
 
-```env
-DATABASE_URL="postgresql://username:password@host:5432/sprintflow"
-AUTH_SECRET="your-development-secret"
-```
+    DATABASE_URL="postgresql://username:password@host:5432/sprintflow"
+    AUTH_SECRET="your-auth-secret"
+    NEXT_PUBLIC_APP_URL="http://localhost:3000"
+    ATTACHMENTS_STORAGE_DIR="./storage/task-attachments"
 
-For local development, use your own database credentials and secrets.
+Never commit `.env` or production secrets to Git.
 
-Never commit `.env` or production secrets to GitHub.
+A `.env.example` file is included for documenting required environment variables.
+
+---
+
+# 🚀 Getting Started
+
+## 1. Clone the repository
+
+    git clone https://github.com/ShahCoding1/sprintflow.git
+
+Then:
+
+    cd sprintflow
+
+---
+
+## 2. Install dependencies
+
+    npm install
+
+---
+
+## 3. Configure environment variables
+
+Create:
+
+    .env
+
+and configure the required variables.
 
 ---
 
 ## 4. Generate Prisma Client
 
-```bash
-npm run db:generate
-```
+    npx prisma generate
 
 ---
 
-## 5. Validate the Prisma schema
+## 5. Validate Prisma
 
-```bash
-npm run db:validate
-```
+    npx prisma validate
 
 ---
 
 ## 6. Apply database migrations
 
-```bash
-npx prisma migrate dev
-```
+For an existing development database:
+
+    npx prisma migrate dev
 
 ---
 
 ## 7. Start the development server
 
-```bash
-npm run dev
-```
+    npm run dev
 
-Open:
+The application will normally be available at:
 
-```text
-http://localhost:3000
-```
+    http://localhost:3000
+
+---
+
+# 🗄️ Database Commands
+
+Format Prisma schema:
+
+    npm run db:format
+
+Validate Prisma schema:
+
+    npm run db:validate
+
+Generate Prisma Client:
+
+    npm run db:generate
+
+Open Prisma Studio:
+
+    npm run db:studio
+
+Create and apply a development migration:
+
+    npx prisma migrate dev
+
+Deploy existing migrations:
+
+    npx prisma migrate deploy
 
 ---
 
 # 🧪 Development Commands
 
-## Start development server
+Start development server:
 
-```bash
-npm run dev
-```
+    npm run dev
 
-## Run ESLint
+Run ESLint:
 
-```bash
-npm run lint
-```
+    npm run lint
 
-## Type check
+Run TypeScript type checking:
 
-```bash
-npx tsc --noEmit
-```
+    npx tsc --noEmit
 
-## Validate Prisma
+Build the production application:
 
-```bash
-npm run db:validate
-```
+    npm run build
 
-## Format Prisma schema
+Run tests:
 
-```bash
-npm run db:format
-```
-
-## Generate Prisma Client
-
-```bash
-npm run db:generate
-```
-
-## Open Prisma Studio
-
-```bash
-npm run db:studio
-```
-
-## Production build
-
-```bash
-npm run build
-```
+    npm run test
 
 ---
 
-# 🧪 Testing
+# 🧪 Testing Strategy
 
-SprintFlow follows a testing strategy covering:
+SprintFlow is designed around multiple testing levels.
 
-- Unit testing
-- Integration testing
-- End-to-end testing
+## Unit Tests
 
-Important application flows include:
+Unit tests are intended to verify isolated business logic such as:
 
-- Registration and login
-- Project creation
-- Workspace invitations
-- Sprint creation
-- Story/task creation
-- Task updates
-- Kanban task movement
-- Bug workflow
-- Dashboard metrics
-- Unauthorized access protection
+- Validation
+- Services
+- Authorization
+- Utility functions
+- Domain logic
+
+---
+
+## Integration Tests
+
+Integration tests are intended to verify:
+
+- API behavior
+- Database interactions
+- Authorization
+- Repository behavior
+- Service/repository integration
+
+A dedicated test database can be used for integration testing.
+
+---
+
+## End-to-End Tests
+
+Playwright is intended for complete user workflows.
+
+Important E2E scenarios include:
+
+1. Register and login
+2. Create a project
+3. Invite a member
+4. Create a sprint
+5. Create a story/task
+6. Developer updates a task
+7. Move a task across Kanban
+8. Tester creates/resolves a bug
+9. Dashboard metrics update
+10. Unauthorized access is denied
 
 ---
 
 # 🔄 CI/CD
 
-The repository includes a GitHub Actions quality pipeline.
+SprintFlow includes a GitHub Actions CI workflow.
 
-The CI workflow performs:
+The CI pipeline performs checks including:
 
-```text
-Install dependencies
-        │
-        ▼
-Prisma validation
-        │
-        ▼
-Prisma generation
-        │
-        ▼
-Database migrations
-        │
-        ▼
-ESLint
-        │
-        ▼
-TypeScript
-        │
-        ▼
-Tests
-        │
-        ▼
-Production build
-        │
-        ▼
-Dependency audit
-```
+    Install dependencies
+            ↓
+    Validate Prisma
+            ↓
+    Generate Prisma Client
+            ↓
+    Run database migrations
+            ↓
+    Run ESLint
+            ↓
+    TypeScript type check
+            ↓
+    Run tests
+            ↓
+    Build application
+            ↓
+    Dependency vulnerability check
 
-The purpose of the CI pipeline is to catch code quality, type, database, test, build, and dependency issues before changes are merged.
+The workflow runs against pushes and pull requests targeting the configured branches.
 
 ---
 
-# 🎨 Design Philosophy
+# 🛡️ Security Principles
 
-SprintFlow uses a focused SaaS interface built around:
+SprintFlow follows several important security principles.
 
-- Clear information hierarchy
-- Minimal visual noise
-- Responsive layouts
-- Consistent spacing
-- Accessible controls
-- Reusable components
-- Fast project navigation
-- Developer-focused workflows
+## Authentication
 
-The product intentionally follows a clean and minimal visual language while providing powerful functionality underneath.
+All protected application operations require an authenticated user.
+
+## Authorization
+
+Authorization is enforced server-side.
+
+## Multi-Tenant Isolation
+
+Resources are always associated with the appropriate organization/workspace.
+
+## Validation
+
+User input is validated before business logic or persistence.
+
+## Password Security
+
+Passwords are hashed using bcrypt.
+
+## Secrets
+
+Sensitive values are stored in environment variables.
+
+## File Security
+
+Attachments are validated and stored through a dedicated storage abstraction.
+
+## Error Handling
+
+Internal implementation details and stack traces should not be exposed to end users.
 
 ---
 
 # 📱 Responsive Design
 
-SprintFlow is designed to work across:
+SprintFlow is designed for:
 
 - Desktop
 - Laptop
 - Tablet
 - Mobile
 
-The interface uses responsive layouts throughout the application to keep project management workflows usable across different screen sizes.
+The UI should remain usable across different viewport sizes.
+
+Responsive design considerations include:
+
+- Flexible layouts
+- Responsive navigation
+- Mobile-friendly forms
+- Responsive tables and lists
+- Touch-friendly controls
+- No unnecessary horizontal overflow
+- Adaptive Kanban interfaces
+- Responsive task details
+- Mobile-friendly dialogs
 
 ---
 
-# 🗺️ Product Roadmap
+# ♿ Accessibility
 
-The current core development focuses on project management functionality.
+The interface is designed with accessibility in mind.
 
-Future enhancements may include:
+Important considerations include:
+
+- Semantic HTML
+- Keyboard accessibility
+- Accessible buttons
+- Form labels
+- Focus states
+- ARIA labels where required
+- Accessible dialogs
+- Readable contrast
+- Screen-reader-friendly interaction
+
+---
+
+# 🧠 Engineering Principles
+
+SprintFlow follows these engineering principles:
+
+### 1. Security First
+
+Never trust the client.
+
+### 2. Server-Side Authorization
+
+Sensitive permissions are always verified on the server.
+
+### 3. Separation of Concerns
+
+UI, validation, business logic, authorization, persistence, and database concerns remain separated.
+
+### 4. Reusable Services
+
+Common business operations are centralized into reusable services.
+
+### 5. Repository Pattern
+
+Database access is isolated in repositories.
+
+### 6. Validation at Boundaries
+
+Incoming data is validated before entering business logic.
+
+### 7. Multi-Tenant by Design
+
+Organization isolation is considered throughout the application.
+
+### 8. Modular Code
+
+Large functionality is split into logically named modules instead of putting everything into one file.
+
+### 9. Real Data
+
+Application functionality should use real database-backed behavior rather than fake/static values.
+
+### 10. Maintainability
+
+The architecture should remain understandable as SprintFlow grows.
+
+---
+
+# 🔄 Development Workflow
+
+SprintFlow follows a structured development process:
+
+    CREATE
+      ↓
+    BUILD
+      ↓
+    IMPLEMENT
+      ↓
+    CONNECT
+      ↓
+    COMPLETE
+      ↓
+    FULL VERIFY
+      ↓
+    FIX
+      ↓
+    FINAL VERIFY
+
+Each feature should be completed across the complete stack where required:
+
+    Frontend
+       ↓
+    Validation
+       ↓
+    API
+       ↓
+    Authorization
+       ↓
+    Service
+       ↓
+    Repository
+       ↓
+    Database
+
+A feature is not considered complete simply because the UI exists.
+
+---
+
+# 📊 Project Status
+
+SprintFlow has progressed beyond the initial foundation and includes a broad set of functional SaaS capabilities.
+
+## Completed Core Areas
+
+- Authentication
+- Organizations/workspaces
+- Workspace context
+- Projects
+- Project members
+- Teams
+- Tasks
+- Subtasks
+- Sprints
+- Comments
+- Labels
+- Task deletion
+- Task activity
+- Notifications
+- Search/command palette
+- Analytics
+- Workspace invitations
+- Workspace settings
+- Workspace audit infrastructure
+- Central audit event service
+- Project audit integration
+- Team audit integration
+- Workspace member audit integration
+- Invitation acceptance audit integration
+- Time tracking
+- Time tracking summaries
+- Time tracking analytics
+- Task time tracking integration
+- Task attachments
+- Activity feed
+- Testing foundation
+- CI/CD foundation
+
+---
+
+# 🗺️ Development Roadmap
+
+## Phase 0 — Planning
+
+- Product vision
+- Architecture
+- Requirements
+- Project structure
+
+## Phase 1 — Foundation
+
+- Next.js setup
+- TypeScript
+- Tailwind
+- UI foundation
+- Database foundation
+
+## Phase 2 — Authentication
+
+- Registration
+- Login
+- Sessions
+- Protected routes
+- Authentication security
+
+## Phase 3 — Database
+
+- Prisma
+- PostgreSQL
+- Migrations
+- Database relationships
+
+## Phase 4 — Projects & Teams
+
+- Organizations
+- Projects
+- Project members
+- Teams
+- Workspace authorization
+
+## Phase 5 — Backlog
+
+- Stories
+- Tasks
+- Bugs
+- Prioritization
+- Backlog organization
+
+## Phase 6 — Sprints
+
+- Sprint creation
+- Sprint planning
+- Sprint lifecycle
+- Sprint task organization
+
+## Phase 7 — Kanban
+
+- Kanban board
+- Drag and drop
+- Task movement
+- Status workflows
+
+## Phase 8 — Bugs & Collaboration
+
+- Bug management
+- Comments
+- Labels
+- Attachments
+- Activity
+- Notifications
+
+## Phase 9 — Analytics
+
+- Dashboard
+- Velocity
+- Burndown
+- Completion rate
+- Cycle time
+- Lead time
+- Time tracking analytics
+
+## Phase 10 — Testing
+
+- Unit testing
+- Integration testing
+- E2E testing
+- Authorization testing
+- Critical workflow testing
+
+## Phase 11 — CI/CD
+
+- GitHub Actions
+- Lint
+- Type checking
+- Tests
+- Prisma validation
+- Build verification
+- Dependency checks
+
+---
+
+# 🔮 Future Enhancements
+
+The long-term SprintFlow roadmap includes additional capabilities such as:
 
 - GitHub integration
 - GitLab integration
 - Slack integration
-- Automation rules
+- Advanced automation
 - Custom fields
 - Webhooks
 - Public API
-- Billing and subscriptions
-- Advanced reporting
-- Additional integrations
-- AI-powered Sprint Intelligence
+- Billing
+- Subscription management
+- Advanced permissions
+- More advanced reporting
+- Advanced time tracking
+- External storage providers
+- More integrations
+- Enhanced project templates
 
-These features are intentionally kept separate from the current core architecture so they can be added without compromising the existing system.
+These features are intentionally treated as future enhancements rather than being mixed into the current core implementation prematurely.
 
 ---
 
-# 🤖 Sprint Intelligence — Future Direction
+# 🤖 Sprint Intelligence
 
-A future AI layer can help teams understand their project data without silently changing important records.
+A future version of SprintFlow can include an AI-powered assistant called **Sprint Intelligence**.
+
+The objective would be to help teams understand project data and make better decisions.
 
 Potential capabilities include:
 
+- Sprint risk detection
+- Task prioritization suggestions
+- Workload analysis
+- Project health summaries
 - Sprint summaries
-- Risk detection
-- Blocked-task analysis
-- Delivery predictions
-- Workload insights
-- Backlog recommendations
-- Progress explanations
+- Delay detection
+- Velocity analysis
+- Burndown interpretation
+- Bottleneck identification
+- Suggested task breakdown
 - Natural-language project queries
 
-AI recommendations should remain transparent and user-controlled.
+AI should primarily:
+
+> Suggest, explain, and interpret.
+
+Important project data should not be silently modified by AI without explicit user confirmation.
 
 ---
 
-# 🏆 Project Goals
+# 🎯 Project Goals
 
-SprintFlow is designed to demonstrate production-oriented full-stack engineering practices, including:
+SprintFlow aims to become a complete SaaS project-management platform that combines:
 
-- Modular architecture
-- Multi-tenant SaaS design
-- Secure authentication
-- Server-side authorization
-- Database-driven workflows
-- Reusable UI components
-- API design
-- Validation
-- Repository/service separation
-- Auditability
-- Collaboration features
-- Analytics
-- Time tracking
-- Responsive UI
-- Automated quality checks
+    Project Management
+            +
+    Agile Planning
+            +
+    Kanban
+            +
+    Team Collaboration
+            +
+    Time Tracking
+            +
+    Analytics
+            +
+    Notifications
+            +
+    Auditability
+            +
+    AI Intelligence
 
-The project is also intended to serve as a practical demonstration of modern TypeScript and Next.js application development.
-
----
-
-# 📌 Project Status
-
-**SprintFlow is an actively developed full-stack SaaS project.**
-
-The core project-management foundation and major collaboration, analytics, notification, attachment, audit, search, workspace, and time-tracking capabilities have been implemented.
-
-The project is currently focused on completing and refining the core product development before moving to deployment, monitoring, and final production polish.
+The long-term goal is to provide teams with one centralized platform for planning, building, tracking, analyzing, and improving their work.
 
 ---
 
-# 👨‍💻 Author
+# 🌐 Git Workflow
 
-## M SHAH KHALID
+Create a feature branch:
 
-Software Engineer | AI/ML & Data Science | Web Development
+    git checkout -b feature/your-feature
 
+Check changes:
 
+    git status
+
+Review changes:
+
+    git diff
+
+Stage changes:
+
+    git add .
+
+Commit:
+
+    git commit -m "feat: add your feature"
+
+Push:
+
+    git push origin feature/your-feature
+
+For production-ready changes, verify:
+
+    npm run lint
+    npx tsc --noEmit
+    npm run build
+
+before creating a pull request.
+
+---
+
+# 🤝 Contributing
+
+Contributions should follow the project's architecture and engineering standards.
+
+Before submitting changes:
+
+1. Understand the existing architecture.
+2. Keep functionality modular.
+3. Validate incoming data.
+4. Add server-side authorization.
+5. Keep database access inside repositories.
+6. Keep business logic inside services.
+7. Avoid duplicating existing infrastructure.
+8. Maintain responsive UI behavior.
+9. Run linting.
+10. Run TypeScript checks.
+11. Run relevant tests.
+12. Verify the complete workflow.
+
+---
+
+# 📌 Repository
+
+GitHub repository:
+
+    https://github.com/ShahCoding1/sprintflow
+
+---
+
+# 👨‍💻 Project Information
+
+**Project:** SprintFlow
+
+**Type:** Multi-Tenant SaaS Project Management Platform
+
+**Architecture:** Full-Stack Next.js
+
+**Frontend:** React + TypeScript + Tailwind CSS
+
+**Backend:** Next.js server-side APIs/services
+
+**Database:** PostgreSQL
+
+**ORM:** Prisma
+
+**Authentication:** Auth.js / NextAuth
+
+**Validation:** Zod
+
+**UI:** shadcn/ui + Base UI
+
+**Deployment Target:** Modern cloud deployment architecture
+
+---
+
+# 👤 Author
+
+**Ehaab Ullah**
+
+Software Engineer | Web Developer
+
+Specialized in:
+
+- JavaScript
+- React
+- Next.js
+- Node.js
+- Express.js
+- MongoDB
+- PostgreSQL
+- Prisma
+- Python
+- AI/ML
+
+---
 
 # 📄 License
 
-This project is currently intended as a personal software engineering project and portfolio application.
+This project is currently developed as a portfolio and engineering project.
 
-License and commercial usage terms can be added when the project is prepared for public distribution.
+License terms can be defined when the project is prepared for public distribution or commercial use.
 
 ---
 
-# ⭐ SprintFlow
+# 🙏 Acknowledgements
 
-> **Plan better. Build faster.**
+SprintFlow is built using and inspired by the modern open-source ecosystem.
 
-A focused project management workspace for teams that want to plan, execute, collaborate, and understand their work in one place.
-```
+Special thanks to the communities behind:
+
+- Next.js
+- React
+- TypeScript
+- Prisma
+- PostgreSQL
+- Tailwind CSS
+- shadcn/ui
+- Base UI
+- Auth.js
+- Zod
+- Lucide
+- dnd-kit
+- Neon
+- GitHub Actions
+
+---
+
+# 🏁 Conclusion
+
+SprintFlow is designed to be more than a basic project-management application.
+
+It is an engineering-focused SaaS platform built around:
+
+- Secure multi-tenancy
+- Scalable architecture
+- Real database-backed functionality
+- Server-side authorization
+- Agile workflows
+- Team collaboration
+- Time tracking
+- Analytics
+- Notifications
+- Auditability
+- Responsive design
+- Maintainable code
+
+The project will continue evolving toward a complete intelligent project-management ecosystem with integrations, automation, advanced analytics, APIs, billing, and AI-powered project intelligence.
+
+---
+
+# 🚀 SprintFlow
+
+> **Plan smarter. Build faster. Ship better.**
