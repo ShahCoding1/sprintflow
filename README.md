@@ -1347,22 +1347,10 @@ GitHub repository:
 
 # 👤 Author
 
-**Ehaab Ullah**
+**M SHAH KHALID**
 
-Software Engineer | Web Developer
+Software Engineer | AI/ML & Data Science | Web Development
 
-Specialized in:
-
-- JavaScript
-- React
-- Next.js
-- Node.js
-- Express.js
-- MongoDB
-- PostgreSQL
-- Prisma
-- Python
-- AI/ML
 
 ---
 
